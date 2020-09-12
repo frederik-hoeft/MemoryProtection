@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="SelfProtection\MarshalExtensions.cs~RF141d983.TMP" />
+    <None Remove="SelfProtection\MemoryProtection\ProtectedString.cs~RF2622892.TMP" />
+    <None Remove="SelfProtection\MemoryProtection\ProtectedString.cs~RF2631070.TMP" />
+    <None Remove="SelfProtection\MemoryProtection\Win32EncryptedMemory.cs~RF1d6303d.TMP" />
+    <None Remove="SelfProtection\ProtectedString.cs~RF19596ca.TMP" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\.editorconfig" Link=".editorconfig" />
+  </ItemGroup>
+
+</Project>
