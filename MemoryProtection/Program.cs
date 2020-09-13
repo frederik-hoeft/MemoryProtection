@@ -16,7 +16,28 @@ namespace MemoryProtection
         private static void Main(string[] args)
         {
             // Call whatever test method you want.
-            TestProtectedStringList();
+            ShiftingTest();
+        }
+
+        private static void ShiftingTest()
+        {
+            ProtectedMemory protectedMemory = ProtectedMemory.Allocate(8);
+            byte[] bytes = new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8 };
+            protectedMemory.Write(bytes, 0);
+            PrintArray(protectedMemory.Read(0, protectedMemory.ContentLength));
+            Console.ReadLine();
+            Console.WriteLine("Shifting 1 byte right");
+            protectedMemory >>= 1;
+            PrintArray(protectedMemory.Read(0, protectedMemory.ContentLength));
+            Console.ReadLine();
+            Console.WriteLine("Shifting 1 byte left");
+            protectedMemory <<= 1;
+            PrintArray(protectedMemory.Read(0, protectedMemory.ContentLength));
+            Console.ReadLine();
+            Console.WriteLine("Shifting 1 byte left");
+            protectedMemory <<= 1;
+            PrintArray(protectedMemory.Read(0, protectedMemory.ContentLength));
+            Console.ReadLine();
         }
 
         private static void TestProtectedStringList()
@@ -113,6 +134,43 @@ namespace MemoryProtection
             protectedMemory.Free();
             Console.WriteLine("Freed!");
             Console.ReadLine();
+        }
+
+        private static void TestProtectedMemory2()
+        {
+            using ProtectedMemory protectedMemory = ProtectedMemory.Allocate(8);
+            protectedMemory[0] = 0x1;
+            PrintArray(protectedMemory.Read(0, 8));
+            protectedMemory[1] = 0x3;
+            PrintArray(protectedMemory.Read(0, 8));
+            protectedMemory[2] = 0x3;
+            PrintArray(protectedMemory.Read(0, 8));
+            protectedMemory[3] = 0x7;
+            PrintArray(protectedMemory.Read(0, 8));
+            protectedMemory[0] = 0x8;
+            Console.ReadLine();
+            protectedMemory.Protect();
+            Console.WriteLine("Protected!");
+            Console.ReadLine();
+            protectedMemory.Unprotect();
+            Console.WriteLine("Unprotected!");
+            Console.ReadLine();
+            protectedMemory.Protect();
+            Console.WriteLine("Protected!");
+            Console.ReadLine();
+            Console.WriteLine("Trying direct read (should fail)");
+            byte[] bytes = new byte[8];
+            Marshal.Copy(protectedMemory.Handle, bytes, 0, bytes.Length);
+            PrintArray(bytes);
+        }
+
+        private static void PrintArray(byte[] arr)
+        {
+            for (int i = 0; i < arr.Length; i++)
+            {
+                Console.Write(arr[i].ToString() + " ");
+            }
+            Console.WriteLine("");
         }
 
         private static bool TestDebugDetection()

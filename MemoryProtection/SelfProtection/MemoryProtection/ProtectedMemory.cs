@@ -1,8 +1,10 @@
-﻿using MemoryProtection.SelfProtection.MemoryProtection.Win32;
+﻿using MemoryProtection.SelfProtection.MemoryProtection.Linux;
+using MemoryProtection.SelfProtection.MemoryProtection.Win32;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 
 namespace MemoryProtection.SelfProtection.MemoryProtection
 {
@@ -12,6 +14,8 @@ namespace MemoryProtection.SelfProtection.MemoryProtection
 
         public IntPtr Handle { get; private protected set; }
         public int Size { get; private protected set; }
+
+        public int ContentLength { get; private protected set; }
 
         public virtual void Dispose()
         {
@@ -28,7 +32,27 @@ namespace MemoryProtection.SelfProtection.MemoryProtection
 
         public abstract void Unprotect();
 
-        public abstract void Write(byte[] bytes, int offset);
+        public virtual void Write(byte[] bytes, int offset)
+        {
+            try
+            {
+                Unprotect();
+                if (IsOutOfBoundes(offset + bytes.Length))
+                {
+                    throw new IndexOutOfRangeException("Buffer overflow!");
+                }
+                Marshal.Copy(bytes, 0, Handle + offset, bytes.Length);
+                if (offset + bytes.Length > ContentLength)
+                {
+                    ContentLength = offset + bytes.Length;
+                }
+            }
+            finally
+            {
+                Protect();
+            }
+            Unprotect();
+        }
 
         public abstract byte[] Read(int offset, int length);
 
@@ -51,6 +75,45 @@ namespace MemoryProtection.SelfProtection.MemoryProtection
             }
         }
 
+        public virtual byte Read(int offset)
+        {
+            try
+            {
+                Unprotect();
+                return Marshal.ReadByte(Handle + offset);
+            }
+            finally
+            {
+                Protect();
+            }
+        }
+
+        public virtual void Write(byte b, int offset)
+        {
+            try
+            {
+                Unprotect();
+                if (IsOutOfBoundes(offset))
+                {
+                    throw new IndexOutOfRangeException("Buffer overflow!");
+                }
+                Marshal.WriteByte(Handle + offset, b);
+                if (offset > ContentLength)
+                {
+                    ContentLength = offset;
+                }
+            }
+            finally
+            {
+                Protect();
+            }
+        }
+
+        private protected bool IsOutOfBoundes(int offset)
+        {
+            return (ulong)Handle + (uint)offset > (ulong)Handle + (uint)Size;
+        }
+
         public abstract void Free();
 
         public static ProtectedMemory Allocate(int size)
@@ -61,6 +124,10 @@ namespace MemoryProtection.SelfProtection.MemoryProtection
 
                 // return new Win32ProtectedMemory(size);
                 return new Win32EncryptedMemory(size);
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD))
+            {
+                return new PosixProtectedMemory(size);
             }
             throw new NotImplementedException("This platform is currently not supported!");
         }
@@ -99,6 +166,58 @@ namespace MemoryProtection.SelfProtection.MemoryProtection
             {
                 Protect();
                 other.Protect();
+            }
+        }
+
+        public static ProtectedMemory operator >> (ProtectedMemory memory, int offset)
+        {
+            if (offset < 0)
+            {
+                throw new ArgumentException("Shift offset cannot be negative!");
+            }
+            else if(offset == 0)
+            {
+                return memory;
+            }
+            int length = memory.ContentLength - offset;
+            IntPtr buffer = Marshal.AllocHGlobal(length);
+            try
+            {
+                memory.Unprotect();
+                // We're shifting right, so we need a buffer because we'd override data we still need to copy.
+                MarshalExtensions.CopyWithBuffer(memory.Handle, 0, memory.Handle, offset, length, buffer);
+                MarshalExtensions.ZeroMemory(memory.Handle, offset);
+                return memory;
+            }
+            finally
+            {
+                MarshalExtensions.ZeroMemory(buffer, length);
+                memory.Protect();
+                Marshal.FreeHGlobal(buffer);
+            }
+        }
+
+        public static ProtectedMemory operator <<(ProtectedMemory memory, int offset)
+        {
+            if (offset < 0)
+            {
+                throw new ArgumentException("Shift offset cannot be negative!");
+            }
+            else if (offset == 0)
+            {
+                return memory;
+            }
+            try
+            {
+                memory.Unprotect();
+                MarshalExtensions.Copy(memory.Handle, offset, memory.Handle, 0, memory.ContentLength - offset);
+                byte[] zeros = new byte[offset];
+                Marshal.Copy(zeros, 0, memory.Handle + memory.ContentLength - offset, offset);
+                return memory;
+            }
+            finally
+            {
+                memory.Protect();
             }
         }
     }

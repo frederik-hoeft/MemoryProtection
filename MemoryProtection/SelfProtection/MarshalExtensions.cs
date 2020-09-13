@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MemoryProtection.SelfProtection.MemoryProtection;
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
@@ -23,6 +24,12 @@ namespace MemoryProtection.SelfProtection
                 byte b = Marshal.ReadByte(s + i);
                 Marshal.WriteByte(d + i, b);
             }
+        }
+
+        internal static void CopyWithBuffer(IntPtr source, int sourceOffset, IntPtr destination, int destinationOffset, int length, IntPtr buffer)
+        {
+            Copy(source, sourceOffset, buffer, 0, length);
+            Copy(buffer, 0, destination, destinationOffset, length);
         }
     }
 }

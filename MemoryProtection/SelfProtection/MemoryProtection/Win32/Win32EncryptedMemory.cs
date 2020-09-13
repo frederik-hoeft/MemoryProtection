@@ -33,6 +33,7 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.Win32
             Size = (int)(requiredBlocks * CRYPTPROTECTMEMORY_BLOCK_SIZE);
             Handle = Marshal.AllocHGlobal(Size);
             MarshalExtensions.ZeroMemory(Handle, Size);
+            ContentLength = size;
             Protect();
         }
 
@@ -60,13 +61,6 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.Win32
         public override void Unprotect()
         {
             CryptUnprotectMemory(Handle, (uint)Size, CRYPTPROTECTMEMORY_SAME_PROCESS);
-        }
-
-        public override void Write(byte[] bytes, int offset)
-        {
-            Unprotect();
-            Marshal.Copy(bytes, 0, Handle + offset, bytes.Length);
-            Protect();
         }
     }
 }

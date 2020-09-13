@@ -9,8 +9,15 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+
   <ItemGroup>
     <None Remove="SelfProtection\MarshalExtensions.cs~RF141d983.TMP" />
+    <None Remove="SelfProtection\MemoryProtection\Cryptography\ProtectedAesProvider.cs~RF17410b9.TMP" />
+    <None Remove="SelfProtection\MemoryProtection\Cryptography\Sha256ProtectedCryptoProvider.cs~RF1760f62.TMP" />
     <None Remove="SelfProtection\MemoryProtection\ProtectedString.cs~RF2622892.TMP" />
     <None Remove="SelfProtection\MemoryProtection\ProtectedString.cs~RF2631070.TMP" />
     <None Remove="SelfProtection\MemoryProtection\Win32EncryptedMemory.cs~RF1d6303d.TMP" />
