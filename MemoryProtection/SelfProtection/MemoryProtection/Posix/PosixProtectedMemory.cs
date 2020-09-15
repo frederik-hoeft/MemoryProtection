@@ -28,9 +28,14 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.Linux
         private readonly uint allocatedSize;
         public unsafe PosixProtectedMemory(int size)
         {
-            if (size < 1)
+            if (size < 0)
             {
-                throw new ArgumentException("Fatal: cannot allocate less than one byte.");
+                throw new ArgumentException("Fatal: cannot allocate less than zero.");
+            }
+            ContentLength = size;
+            if (size == 0)
+            {
+                size = 1;
             }
             uint pageSize = (uint)getpagesize();
             Console.WriteLine("getpagesize returned " + pageSize.ToString());

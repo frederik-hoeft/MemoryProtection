@@ -15,6 +15,8 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.ProtectedString
             Value = c;
         }
 
+        public int SequenceLength { get; private set; }
+
         public new ProtectedStringNode Next { get; set; }
 
         public new ProtectedStringNode Previous { get; set; }
@@ -23,17 +25,23 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.ProtectedString
         {
             get
             {
-                byte[] bytes = base.Value.Read(0, 2);
-                ushort value = bytes[1];
-                return (char)(value + (ushort)(bytes[0] << 8));
+                byte[] bytes = base.Value.Read(0, 4);
+                Rune.DecodeFromUtf8(bytes, out Rune result, out _);
+                return (char)result.Value;
             }
             set
             {
-                byte[] bytes = new byte[2];
-                bytes[1] = (byte)value;
-                bytes[0] = (byte)(value >> 8);
+                Rune rune = new Rune(value);
+                byte[] bytes = new byte[4];
+                rune.EncodeToUtf8(bytes);
+                SequenceLength = rune.Utf8SequenceLength;
                 base.Value.Write(bytes, 0);
             }
+        }
+
+        public ProtectedMemory GetProtectedMemory()
+        {
+            return base.Value;
         }
 
         public bool Equals(ProtectedStringNode other)

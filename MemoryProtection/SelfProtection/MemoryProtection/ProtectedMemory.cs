@@ -51,7 +51,6 @@ namespace MemoryProtection.SelfProtection.MemoryProtection
             {
                 Protect();
             }
-            Unprotect();
         }
 
         public abstract byte[] Read(int offset, int length);

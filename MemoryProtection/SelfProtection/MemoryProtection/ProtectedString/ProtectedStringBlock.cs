@@ -1,6 +1,7 @@
 ﻿using MemoryProtection.SelfProtection.MemoryProtection;
 using System;
 using System.Collections.Generic;
+using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -15,23 +16,23 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.ProtectedString
 
         public ProtectedStringBlock()
         {
-            protectedMemory = ProtectedMemory.Allocate(64);
+            protectedMemory = ProtectedMemory.Allocate(0);
         }
 
         public void Append(char c)
         {
-            byte[] bytes = new byte[2];
-            bytes[0] = (byte)(c >> 8);
-            bytes[1] = (byte)c;
-            if (Length + 2 >= protectedMemory.Size)
+            Rune rune = new Rune(c);
+            byte[] bytes = new byte[rune.Utf8SequenceLength];
+            rune.EncodeToUtf8(bytes);
+            if (protectedMemory.ContentLength + rune.Utf8SequenceLength >= protectedMemory.Size)
             {
                 ProtectedMemory newProtectedMemory = ProtectedMemory.Allocate(2 * protectedMemory.Size);
                 protectedMemory.CopyTo(0, newProtectedMemory, 0, Length);
                 protectedMemory.Free();
                 protectedMemory = newProtectedMemory;
             }
-            protectedMemory.Write(bytes, Length);
-            Length += 2;
+            protectedMemory.Write(bytes, protectedMemory.ContentLength);
+            Length++;
         }
 
         public bool Equals(ProtectedStringBlock other)
@@ -81,6 +82,13 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.ProtectedString
                 return false;
             }
             return Equals((ProtectedStringBlock)other);
+        }
+
+        public ProtectedMemory GetProtectedUtf8Bytes()
+        {
+            ProtectedMemory result = ProtectedMemory.Allocate(protectedMemory.ContentLength);
+            protectedMemory.CopyTo(0, result, 0, protectedMemory.ContentLength);
+            return result;
         }
     }
 }

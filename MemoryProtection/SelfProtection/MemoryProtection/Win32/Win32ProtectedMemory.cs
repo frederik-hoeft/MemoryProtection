@@ -23,9 +23,14 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.Win32
         private readonly int allocatedSize;
         public Win32ProtectedMemory(int size)
         {
-            if (size < 1)
+            if (size < 0)
             {
-                throw new ArgumentException("Fatal: cannot allocate less than one byte.");
+                throw new ArgumentException("Fatal: cannot allocate less than zero.");
+            }
+            ContentLength = size;
+            if (size == 0)
+            {
+                size = 1;
             }
             GetNativeSystemInfo(out SYSTEM_INFO systemInfo);
             uint pageSize = systemInfo.dwPageSize;

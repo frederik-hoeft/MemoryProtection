@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace MemoryProtection.SelfProtection.MemoryProtection.Cryptography
@@ -21,19 +22,51 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.Cryptography
         private static readonly uint[] H = new uint[] {
             0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19 };
 
-        public ProtectedMemory ComputeHash(ProtectedMemory protectedMemory)
+        private const int digestLength = 0x20;
+        private const int msgSchedBufSize = 64 * sizeof(int);
+
+        public ProtectedMemory ComputeHashProtected(ProtectedMemory protectedMemory)
         {
-            if (protectedMemory.ContentLength + 64 + 2 > protectedMemory.Size)
-            {
+            IntPtr pHash = Digest(protectedMemory);
+            ProtectedMemory result = ProtectedMemory.Allocate(digestLength);
+            result.Unprotect();
+            MarshalExtensions.Copy(pHash, 0, result.Handle, 0, digestLength);
+            result.Protect();
+            MarshalExtensions.ZeroMemory(pHash, digestLength);
+            Marshal.FreeHGlobal(pHash);
+            return result;
+        }
 
-            }
-            // buffer.Write(0x80, buffer.ContentLength);
+        public ProtectedMemory ComputeHashProtected(IProtectedString protectedString)
+        {
+            using ProtectedMemory protectedMemory = protectedString.GetProtectedUtf8Bytes();
+            return ComputeHashProtected(protectedMemory);
+        }
 
+        public string ComputeHash(ProtectedMemory protectedMemory)
+        {
+            IntPtr hash = Digest(protectedMemory);
+            byte[] resultBytes = new byte[digestLength];
+            Marshal.Copy(hash, resultBytes, 0, digestLength);
+            string result = ByteArrayToString(resultBytes);
+            MarshalExtensions.ZeroMemory(hash, digestLength);
+            Marshal.FreeHGlobal(hash);
+            return result;
+        }
+
+        public string ComputeHash(IProtectedString protectedString)
+        {
+            using ProtectedMemory protectedMemory = protectedString.GetProtectedUtf8Bytes();
+            return ComputeHash(protectedMemory);
+        }
+
+        private IntPtr Digest(ProtectedMemory protectedMemory)
+        {
             // convert string msg into 512-bit blocks (array of 16 32-bit integers) [§5.2.1]
             int contentLength = protectedMemory.ContentLength;
-            int length = (contentLength / 4) + 2;                       // length (in 32-bit integers) of content length + ‘1’ + appended length
+            double length = (contentLength / 4) + 3;                        // length (in 32-bit integers) of content length + ‘1’ + appended length
             int blockCount = (int)Math.Ceiling(length / 16d);            // number of 16-integer (512-bit) blocks required to hold 'l' ints
-            int allocatedSize = blockCount * 512;
+            int allocatedSize = blockCount * 16 * sizeof(int);
             IntPtr messageBuffer = Marshal.AllocHGlobal(allocatedSize);
             MarshalExtensions.ZeroMemory(messageBuffer, allocatedSize);
             try
@@ -45,22 +78,142 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.Cryptography
             {
                 protectedMemory.Protect();
             }
+            // append padding
             Marshal.WriteByte(messageBuffer + contentLength, 0x80);
             IntPtr buffer = Marshal.AllocHGlobal(allocatedSize);
             MarshalExtensions.ZeroMemory(buffer, allocatedSize);
             for (int i = 0; i < blockCount; i++)
             {
+                IntPtr rowPointer = messageBuffer + (i * 64);
+                // encode 4 chars per integer (64 per block), big-endian encoding
                 for (int j = 0; j < 16; j++)
                 {
-                    int value = Marshal.ReadInt16(messageBuffer + (i * 64 * sizeof(char)) + (j * 4 * sizeof(char)) + (0 * sizeof(char))) << 24 |
-                                Marshal.ReadInt16(messageBuffer + (i * 64 * sizeof(char)) + (j * 4 * sizeof(char)) + (1 * sizeof(char))) << 16 |
-                                Marshal.ReadInt16(messageBuffer + (i * 64 * sizeof(char)) + (j * 4 * sizeof(char)) + (2 * sizeof(char))) << 8 |
-                                Marshal.ReadInt16(messageBuffer + (i * 64 * sizeof(char)) + (j * 4 * sizeof(char)) + (3 * sizeof(char))) << 0;
-                    Marshal.WriteInt32(buffer + (i * 16 * sizeof(int)) + (j * sizeof(int)), value);
+                    int value = MarshalExtensions.ReadInt32BigEndian(rowPointer + (j * sizeof(int)));
+                    Marshal.WriteInt32(buffer + (sizeof(int) * ((i * 16) + j)), value);
                 }
             }
-            // TODO ...
-            return null;
+            // zero-free message buffer
+            MarshalExtensions.ZeroMemory(messageBuffer, allocatedSize);
+            Marshal.FreeHGlobal(messageBuffer);
+            // add length (in bits) into final pair of 32-bit integers (big-endian)
+            long len = contentLength * 8;
+            int lenHi = (int)(len >> 32);
+            int lenLo = (int)len;
+            Marshal.WriteInt32(buffer + allocatedSize - sizeof(long), lenHi);
+            Marshal.WriteInt32(buffer + allocatedSize - sizeof(int), lenLo);
+
+            // allocate message schedule
+            IntPtr messageScheduleBuffer = Marshal.AllocHGlobal(msgSchedBufSize);
+
+            // allocate memory for hash and copy constants.
+            IntPtr pHash = Marshal.AllocHGlobal(digestLength);
+            byte[] managedHash = new byte[H.Length * sizeof(uint)];
+            Buffer.BlockCopy(H, 0, managedHash, 0, managedHash.Length);
+            Marshal.Copy(managedHash, 0, pHash, managedHash.Length);
+
+            // HASH COMPUTATION
+            for (int i = 0; i < blockCount; i++)
+            {
+                // prepare message schedule
+                for (int j = 0; j < 16; j++)
+                {
+                    int value = Marshal.ReadInt32(buffer + (sizeof(int) * ((i * 16) + j)));
+                    Marshal.WriteInt32(messageScheduleBuffer + (j * sizeof(int)), value);
+                }
+                for (int j = 16; j < 64; j++)
+                {
+                    uint value = sigma1((uint)Marshal.ReadInt32(messageScheduleBuffer + ((j - 2) * sizeof(int))))
+                                 + (uint)Marshal.ReadInt32(messageScheduleBuffer + ((j - 7) * sizeof(int)))
+                                 + sigma0((uint)Marshal.ReadInt32(messageScheduleBuffer + ((j - 15) * sizeof(int))))
+                                 + (uint)Marshal.ReadInt32(messageScheduleBuffer + ((j - 16) * sizeof(int)));
+                    Marshal.WriteInt32(messageScheduleBuffer + (j * sizeof(int)), (int)value);
+                }
+                // initialize working variables a, b, c, d, e, f, g, h with previous hash value
+                uint a = (uint)Marshal.ReadInt32(pHash + (0 * sizeof(int)));
+                uint b = (uint)Marshal.ReadInt32(pHash + (1 * sizeof(int)));
+                uint c = (uint)Marshal.ReadInt32(pHash + (2 * sizeof(int)));
+                uint d = (uint)Marshal.ReadInt32(pHash + (3 * sizeof(int)));
+                uint e = (uint)Marshal.ReadInt32(pHash + (4 * sizeof(int)));
+                uint f = (uint)Marshal.ReadInt32(pHash + (5 * sizeof(int)));
+                uint g = (uint)Marshal.ReadInt32(pHash + (6 * sizeof(int)));
+                uint h = (uint)Marshal.ReadInt32(pHash + (7 * sizeof(int)));
+                // main loop
+                for (int j = 0; j < 64; j++)
+                {
+                    uint t1 = h + sum1(e) + Ch(e, f, g) + K[j] + (uint)Marshal.ReadInt32(messageScheduleBuffer + (j * sizeof(int)));
+                    uint t2 = sum0(a) + Maj(a, b, c);
+                    h = g;
+                    g = f;
+                    f = e;
+                    e = d + t1;
+                    d = c;
+                    c = b;
+                    b = a;
+                    a = t1 + t2;
+                }
+                // compute the new intermediate hash value
+                Marshal.WriteInt32(pHash + (0 * sizeof(int)), (int)((uint)Marshal.ReadInt32(pHash + (0 * sizeof(int))) + a));
+                Marshal.WriteInt32(pHash + (1 * sizeof(int)), (int)((uint)Marshal.ReadInt32(pHash + (1 * sizeof(int))) + b));
+                Marshal.WriteInt32(pHash + (2 * sizeof(int)), (int)((uint)Marshal.ReadInt32(pHash + (2 * sizeof(int))) + c));
+                Marshal.WriteInt32(pHash + (3 * sizeof(int)), (int)((uint)Marshal.ReadInt32(pHash + (3 * sizeof(int))) + d));
+                Marshal.WriteInt32(pHash + (4 * sizeof(int)), (int)((uint)Marshal.ReadInt32(pHash + (4 * sizeof(int))) + e));
+                Marshal.WriteInt32(pHash + (5 * sizeof(int)), (int)((uint)Marshal.ReadInt32(pHash + (5 * sizeof(int))) + f));
+                Marshal.WriteInt32(pHash + (6 * sizeof(int)), (int)((uint)Marshal.ReadInt32(pHash + (6 * sizeof(int))) + g));
+                Marshal.WriteInt32(pHash + (7 * sizeof(int)), (int)((uint)Marshal.ReadInt32(pHash + (7 * sizeof(int))) + h));
+            }
+            MarshalExtensions.Int32LittleEndianArrayToBigEndian(pHash, digestLength);
+            // zero-free used buffers
+            MarshalExtensions.ZeroMemory(messageScheduleBuffer, msgSchedBufSize);
+            Marshal.FreeHGlobal(messageScheduleBuffer);
+            MarshalExtensions.ZeroMemory(buffer, allocatedSize);
+            Marshal.FreeHGlobal(buffer);
+            // return pointer to computed hash (needs to be freed by caller).
+            return pHash;
+        }
+
+        private uint RotateRight(uint x, int places)
+        {
+            return (x >> places) | (x << (32 - places));
+        }
+
+        private uint sum0(uint x)
+        {
+            return RotateRight(x, 2) ^ RotateRight(x, 13) ^ RotateRight(x, 22);
+        }
+
+        private uint sum1(uint x)
+        {
+            return RotateRight(x, 6) ^ RotateRight(x, 11) ^ RotateRight(x, 25);
+        }
+
+        private uint sigma0(uint x)
+        {
+            return RotateRight(x, 7) ^ RotateRight(x, 18) ^ (x >> 3);
+        }
+
+        private uint sigma1(uint x)
+        {
+            return RotateRight(x, 17) ^ RotateRight(x, 19) ^ (x >> 10);
+        }
+
+        private uint Ch(uint x, uint y, uint z)
+        {
+            return (x & y) ^ (~x & z);
+        }
+
+        private uint Maj(uint x, uint y, uint z)
+        {
+            return (x & y) ^ (x & z) ^ (y & z);
+        }
+
+        public static string ByteArrayToString(byte[] ba)
+        {
+            StringBuilder hex = new StringBuilder(ba.Length * 2);
+            for (int i = 0; i < ba.Length; i++)
+            {
+                hex.AppendFormat("{0:x2}", ba[i]);
+            }
+            return hex.ToString();
         }
     }
 }

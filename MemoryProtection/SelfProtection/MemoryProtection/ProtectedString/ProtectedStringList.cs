@@ -1,6 +1,7 @@
 ﻿using MemoryProtection.SelfProtection.MemoryProtection;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace MemoryProtection.SelfProtection.MemoryProtection.ProtectedString
@@ -9,6 +10,7 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.ProtectedString
     // During comparison only a single character will be unprotected.
     public class ProtectedStringList : IProtectedString
     {
+        private int rawContentLength;
         public int Length { get; private set; }
         private ProtectedStringNode head;
         private ProtectedStringNode tail;
@@ -16,6 +18,7 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.ProtectedString
         public void Append(char c)
         {
             ProtectedStringNode node = new ProtectedStringNode(c);
+            rawContentLength += node.SequenceLength;
             if (Length == 0)
             {
                 head = node;
@@ -79,6 +82,39 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.ProtectedString
                 return false;
             }
             return Equals((ProtectedStringList)other);
+        }
+
+        public ProtectedMemory GetProtectedUtf8Bytes()
+        {
+            ProtectedMemory result = ProtectedMemory.Allocate(rawContentLength);
+            result.Unprotect();
+            ProtectedStringNode node = head;
+            int offset = 0;
+            for (int i = 0; i < Length; i++)
+            {
+                ProtectedMemory protectedNodeMemory = node.GetProtectedMemory();
+                try
+                {
+                    protectedNodeMemory.Unprotect();
+                    for (int j = 0; j < 4; j++)
+                    {
+                        byte b = Marshal.ReadByte(protectedNodeMemory.Handle + j);
+                        if (b == 0x0)
+                        {
+                            break;
+                        }
+                        Marshal.WriteByte(result.Handle + offset, b);
+                        offset++;
+                    }
+                }
+                finally
+                {
+                    protectedNodeMemory.Protect();
+                }
+                node = node.Next;
+            }
+            result.Protect();
+            return result;
         }
     }
 }

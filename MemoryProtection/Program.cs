@@ -1,8 +1,10 @@
 ﻿using MemoryProtection.SelfProtection;
 using MemoryProtection.SelfProtection.MemoryProtection;
+using MemoryProtection.SelfProtection.MemoryProtection.Cryptography;
 using MemoryProtection.SelfProtection.MemoryProtection.ProtectedString;
 using MemoryProtection.SelfProtection.MemoryProtection.Win32;
 using System;
+using System.Diagnostics;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Security;
@@ -16,7 +18,26 @@ namespace MemoryProtection
         private static void Main(string[] args)
         {
             // Call whatever test method you want.
-            ShiftingTest();
+            Sha256Test();
+        }
+
+        private static void Sha256Test()
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes("Lorem ipsum dolor sit amet, consectetur adipiscing elit.");
+            using ProtectedMemory protectedMemory = ProtectedMemory.Allocate(bytes.Length);
+            protectedMemory.Write(bytes, 0);
+            Sha256ProtectedCryptoProvider sha256 = new Sha256ProtectedCryptoProvider();
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            for (int i = 0; i < 500000; i++)
+            {
+                _ = sha256.ComputeHash(protectedMemory);
+            }
+            stopwatch.Stop();
+            Console.WriteLine("500000 hashes done in " + stopwatch.Elapsed.ToString());
+            double t = stopwatch.ElapsedMilliseconds / 500000d;
+            Console.WriteLine(" * " + t.ToString() + " ms per digest.");
+            Console.WriteLine(" * " + (1000d / t).ToString() + " hashes per second.");
         }
 
         private static void ShiftingTest()
@@ -164,11 +185,40 @@ namespace MemoryProtection
             PrintArray(bytes);
         }
 
-        private static void PrintArray(byte[] arr)
+        internal static void PrintArray(byte[] arr)
         {
             for (int i = 0; i < arr.Length; i++)
             {
                 Console.Write(arr[i].ToString() + " ");
+            }
+            Console.WriteLine("");
+        }
+
+        internal static void PrintArray(IntPtr ptr, int size)
+        {
+            byte[] bytes = new byte[size];
+            Marshal.Copy(ptr, bytes, 0, size);
+            for (int i = 0; i < size; i++)
+            {
+                Console.Write("0x" + bytes[i].ToString("x") + " ");
+            }
+            Console.WriteLine("");
+        }
+
+        internal static void PrintInt32Array(IntPtr ptr, int size)
+        {
+            for (int i = 0; i < size / sizeof(int); i++)
+            {
+                Console.Write(Marshal.ReadInt32(ptr + i * sizeof(int)).ToString() + " ");
+            }
+            Console.WriteLine("");
+        }
+
+        internal static void PrintInt32BigEndianArray(IntPtr ptr, int size)
+        {
+            for (int i = 0; i < size / sizeof(int); i++)
+            {
+                Console.Write(MarshalExtensions.ReadInt32BigEndian(ptr + (i * sizeof(int))).ToString() + " ");
             }
             Console.WriteLine("");
         }

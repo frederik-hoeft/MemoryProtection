@@ -11,5 +11,7 @@ namespace MemoryProtection.SelfProtection.MemoryProtection
         public void Append(char c);
 
         public bool Equals(IProtectedString other);
+
+        public ProtectedMemory GetProtectedUtf8Bytes();
     }
 }

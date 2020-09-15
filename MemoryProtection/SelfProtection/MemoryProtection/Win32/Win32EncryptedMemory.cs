@@ -25,15 +25,19 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.Win32
 
         public Win32EncryptedMemory(int size)
         {
-            if (size < 1)
+            if (size < 0)
             {
-                throw new ArgumentException("Fatal: cannot allocate less than one byte.");
+                throw new ArgumentException("Fatal: cannot allocate less than zero.");
+            }
+            ContentLength = size;
+            if (size == 0)
+            {
+                size = 1;
             }
             uint requiredBlocks = (uint)Math.Ceiling((double)size / CRYPTPROTECTMEMORY_BLOCK_SIZE);
             Size = (int)(requiredBlocks * CRYPTPROTECTMEMORY_BLOCK_SIZE);
             Handle = Marshal.AllocHGlobal(Size);
             MarshalExtensions.ZeroMemory(Handle, Size);
-            ContentLength = size;
             Protect();
         }
 
