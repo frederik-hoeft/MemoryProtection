@@ -18,10 +18,10 @@ namespace MemoryProtection
         private static void Main(string[] args)
         {
             // Call whatever test method you want.
-            Sha256Test();
+            Sha256PerfTest();
         }
 
-        private static void Sha256Test()
+        private static void Sha256PerfTest()
         {
             byte[] bytes = Encoding.UTF8.GetBytes("Lorem ipsum dolor sit amet, consectetur adipiscing elit.");
             using ProtectedMemory protectedMemory = ProtectedMemory.Allocate(bytes.Length);
@@ -38,6 +38,15 @@ namespace MemoryProtection
             double t = stopwatch.ElapsedMilliseconds / 500000d;
             Console.WriteLine(" * " + t.ToString() + " ms per digest.");
             Console.WriteLine(" * " + (1000d / t).ToString() + " hashes per second.");
+        }
+
+        private static void Sha256Tests()
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes("ABCD");
+            using ProtectedMemory protectedMemory = ProtectedMemory.Allocate(bytes.Length);
+            protectedMemory.Write(bytes, 0);
+            Sha256ProtectedCryptoProvider sha256 = new Sha256ProtectedCryptoProvider();
+            Console.WriteLine(sha256.ComputeHash(protectedMemory));
         }
 
         private static void ShiftingTest()

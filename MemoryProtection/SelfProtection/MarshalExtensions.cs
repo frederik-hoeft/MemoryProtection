@@ -19,10 +19,21 @@ namespace MemoryProtection.SelfProtection
         {
             IntPtr s = source + sourceOffset;
             IntPtr d = destination + destinationOffset;
-            for (int i = 0; i < length; i++)
+            if ((length & 1) == 1)
             {
-                byte b = Marshal.ReadByte(s + i);
-                Marshal.WriteByte(d + i, b);
+                for (int i = 0; i < length; i++)
+                {
+                    byte b = Marshal.ReadByte(s + i);
+                    Marshal.WriteByte(d + i, b);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < (length / 2); i++)
+                {
+                    short b = Marshal.ReadInt16(s + (2 * i));
+                    Marshal.WriteInt16(d + (2 * i), b);
+                }
             }
         }
 
