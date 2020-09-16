@@ -77,13 +77,13 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
             IntPtr hMessageBuffer = Marshal.AllocHGlobal(allocatedSize);
             byte[] allocatedSizeZeros = new byte[allocatedSize];
             Marshal.Copy(allocatedSizeZeros, 0, hMessageBuffer, allocatedSize);
+            byte* messageBuffer = (byte*)hMessageBuffer;
             try
             {
                 protectedMemory.Unprotect();
                 if ((contentLength & 1) == 1)
                 {
                     byte* pProtectedMemory = (byte*)protectedMemory.Handle;
-                    byte* messageBuffer = (byte*)hMessageBuffer;
                     for (int i = 0; i < contentLength; i++)
                     {
                         messageBuffer[i] = pProtectedMemory[i];
@@ -92,10 +92,10 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
                 else
                 {
                     short* pProtectedMemory = (short*)protectedMemory.Handle;
-                    short* messageBuffer = (short*)hMessageBuffer;
+                    short* pMessageBuffer = (short*)hMessageBuffer;
                     for (int i = 0; i < (contentLength / 2); i++)
                     {
-                        messageBuffer[i] = pProtectedMemory[i];
+                        pMessageBuffer[i] = pProtectedMemory[i];
                     }
                 }
             }
@@ -104,16 +104,16 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
                 protectedMemory.Protect();
             }
             // append padding
-            Marshal.WriteByte(hMessageBuffer + contentLength, 0x80);
+            messageBuffer[contentLength] = 0x80;
 
             IntPtr hBuffer = Marshal.AllocHGlobal(allocatedSize);
             int* buffer = (int*)hBuffer;
             int bufferLength = allocatedSize / sizeof(int);
-            byte* pMessageBuffer = (byte*)hMessageBuffer;
+
             Marshal.Copy(allocatedSizeZeros, 0, hBuffer, allocatedSize);
             for (int i = 0; i < blockCount; i++)
             {
-                byte* pRow = pMessageBuffer + (i * 64);
+                byte* pRow = messageBuffer + (i * 64);
                 int blockOffset = i * 16;
                 // encode 4 chars per integer (64 per block), big-endian encoding
                 for (int j = 0; j < 16; j++)
@@ -123,7 +123,6 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
                 }
             }
             // zero-free message buffer
-
             Marshal.Copy(allocatedSizeZeros, 0, hMessageBuffer, allocatedSize);
             Marshal.FreeHGlobal(hMessageBuffer);
             // add length (in bits) into final pair of 32-bit integers (big-endian)
