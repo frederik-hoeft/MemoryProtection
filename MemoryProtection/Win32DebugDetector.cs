@@ -5,7 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace MemoryProtection.SelfProtection
+namespace MemoryProtection
 {
     internal static class Win32DebugDetector
     {

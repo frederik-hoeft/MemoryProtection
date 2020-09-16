@@ -5,9 +5,9 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace MemoryProtection.SelfProtection.MemoryProtection.Cryptography
+namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
 {
-    public class Sha256ProtectedCryptoProvider
+    public class Sha256ProtectedCryptoProvider : IProtectedHashFunction
     {
         private static readonly uint[] K = new uint[] {
             0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,

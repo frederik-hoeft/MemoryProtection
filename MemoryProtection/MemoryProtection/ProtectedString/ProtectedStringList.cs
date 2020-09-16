@@ -1,10 +1,10 @@
-﻿using MemoryProtection.SelfProtection.MemoryProtection;
+﻿using MemoryProtection.MemoryProtection;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace MemoryProtection.SelfProtection.MemoryProtection.ProtectedString
+namespace MemoryProtection.MemoryProtection.ProtectedString
 {
     // This is a linked list with each character being of type ProtectedMemory.
     // During comparison only a single character will be unprotected.

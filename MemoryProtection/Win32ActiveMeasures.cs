@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
-namespace MemoryProtection.SelfProtection
+namespace MemoryProtection
 {
     internal static class Win32ActiveMeasures
     {

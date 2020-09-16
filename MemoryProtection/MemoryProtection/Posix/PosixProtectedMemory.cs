@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace MemoryProtection.SelfProtection.MemoryProtection.Linux
+namespace MemoryProtection.MemoryProtection.Linux
 {
     public class PosixProtectedMemory : ProtectedMemory
     {

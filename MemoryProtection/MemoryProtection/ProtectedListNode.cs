@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace MemoryProtection.SelfProtection.MemoryProtection
+namespace MemoryProtection.MemoryProtection
 {
     internal class ProtectedListNode : IDisposable
     {

@@ -1,12 +1,12 @@
-﻿using MemoryProtection.SelfProtection.MemoryProtection.Linux;
-using MemoryProtection.SelfProtection.MemoryProtection.Win32;
+﻿using MemoryProtection.MemoryProtection.Linux;
+using MemoryProtection.MemoryProtection.Win32;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
-namespace MemoryProtection.SelfProtection.MemoryProtection
+namespace MemoryProtection.MemoryProtection
 {
     public abstract class ProtectedMemory : IDisposable
     {

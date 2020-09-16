@@ -1,8 +1,9 @@
-﻿using MemoryProtection.SelfProtection;
-using MemoryProtection.SelfProtection.MemoryProtection;
-using MemoryProtection.SelfProtection.MemoryProtection.Cryptography;
-using MemoryProtection.SelfProtection.MemoryProtection.ProtectedString;
-using MemoryProtection.SelfProtection.MemoryProtection.Win32;
+﻿using MemoryProtection;
+using MemoryProtection.MemoryProtection;
+using MemoryProtection.MemoryProtection.Cryptography;
+using MemoryProtection.MemoryProtection.Cryptography.Sha256Protected;
+using MemoryProtection.MemoryProtection.ProtectedString;
+using MemoryProtection.MemoryProtection.Win32;
 using System;
 using System.Diagnostics;
 using System.Reflection.PortableExecutable;

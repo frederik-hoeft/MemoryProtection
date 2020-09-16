@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
 
-namespace MemoryProtection.SelfProtection.MemoryProtection.Cryptography
+namespace MemoryProtection.MemoryProtection.Cryptography
 {
     // https://github.com/kokke/tiny-AES-c/blob/master/aes.c
     public class ProtectedAesProvider
@@ -18,7 +18,6 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.Cryptography
 
         public ProtectedAesProvider(IProtectedString protectedString)
         {
-
         }
     }
 }

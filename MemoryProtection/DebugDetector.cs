@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace MemoryProtection.SelfProtection
+namespace MemoryProtection
 {
     internal static class DebugDetector
     {

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace MemoryProtection.SelfProtection.MemoryProtection.ProtectedString
+namespace MemoryProtection.MemoryProtection.ProtectedString
 {
     internal sealed class ProtectedStringNode : ProtectedListNode
     {

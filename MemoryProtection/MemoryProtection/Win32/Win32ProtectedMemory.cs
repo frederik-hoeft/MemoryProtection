@@ -5,7 +5,7 @@ using System.Security;
 using System.Security.Permissions;
 using System.Text;
 
-namespace MemoryProtection.SelfProtection.MemoryProtection.Win32
+namespace MemoryProtection.MemoryProtection.Win32
 {
     public class Win32ProtectedMemory : ProtectedMemory
     {
@@ -77,7 +77,7 @@ namespace MemoryProtection.SelfProtection.MemoryProtection.Win32
             [FieldOffset(0)] internal uint dwOemId;
             [FieldOffset(0)] internal ushort wProcessorArchitecture;
             [FieldOffset(sizeof(ushort))] internal ushort wReserved;
-        };
+        }
 
         [StructLayout(LayoutKind.Sequential)]
         private struct SYSTEM_INFO

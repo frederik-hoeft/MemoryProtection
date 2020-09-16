@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -15,13 +15,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="SelfProtection\MarshalExtensions.cs~RF141d983.TMP" />
-    <None Remove="SelfProtection\MemoryProtection\Cryptography\ProtectedAesProvider.cs~RF17410b9.TMP" />
-    <None Remove="SelfProtection\MemoryProtection\Cryptography\Sha256ProtectedCryptoProvider.cs~RF1760f62.TMP" />
-    <None Remove="SelfProtection\MemoryProtection\ProtectedString.cs~RF2622892.TMP" />
-    <None Remove="SelfProtection\MemoryProtection\ProtectedString.cs~RF2631070.TMP" />
-    <None Remove="SelfProtection\MemoryProtection\Win32EncryptedMemory.cs~RF1d6303d.TMP" />
-    <None Remove="SelfProtection\ProtectedString.cs~RF19596ca.TMP" />
+    <None Remove="MemoryProtection\Cryptography\ProtectedAesProvider.cs~RF17410b9.TMP" />
+    <None Remove="MemoryProtection\Cryptography\Sha256ProtectedCryptoProvider.cs~RF1760f62.TMP" />
+    <None Remove="MemoryProtection\ProtectedString.cs~RF2622892.TMP" />
+    <None Remove="MemoryProtection\ProtectedString.cs~RF2631070.TMP" />
+    <None Remove="MemoryProtection\Win32EncryptedMemory.cs~RF1d6303d.TMP" />
   </ItemGroup>
 
   <ItemGroup>

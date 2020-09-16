@@ -1,11 +1,11 @@
-﻿using MemoryProtection.SelfProtection.MemoryProtection;
+﻿using MemoryProtection.MemoryProtection;
 using System;
 using System.Collections.Generic;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace MemoryProtection.SelfProtection.MemoryProtection.ProtectedString
+namespace MemoryProtection.MemoryProtection.ProtectedString
 {
     // This is a continuous region of ProtectedMemory.
     // During comparison the whole thing will be unprotected.

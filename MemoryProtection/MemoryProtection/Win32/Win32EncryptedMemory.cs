@@ -1,10 +1,10 @@
-﻿using MemoryProtection.SelfProtection.MemoryProtection;
+﻿using MemoryProtection.MemoryProtection;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace MemoryProtection.SelfProtection.MemoryProtection.Win32
+namespace MemoryProtection.MemoryProtection.Win32
 {
     public class Win32EncryptedMemory : ProtectedMemory
     {

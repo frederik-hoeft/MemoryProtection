@@ -1,11 +1,11 @@
-﻿using MemoryProtection.SelfProtection.MemoryProtection;
+﻿using MemoryProtection.MemoryProtection;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Text;
 
-namespace MemoryProtection.SelfProtection
+namespace MemoryProtection
 {
     internal static class MarshalExtensions
     {
@@ -35,6 +35,13 @@ namespace MemoryProtection.SelfProtection
                     Marshal.WriteInt16(d + (2 * i), b);
                 }
             }
+        }
+
+        internal static void Copy(uint[] source, int startIndex, IntPtr destination, int length)
+        {
+            byte[] buffer = new byte[length * sizeof(uint)];
+            Buffer.BlockCopy(source, startIndex, buffer, 0, length);
+            Marshal.Copy(buffer, 0, destination, length);
         }
 
         internal static void CopyWithBuffer(IntPtr source, int sourceOffset, IntPtr destination, int destinationOffset, int length, IntPtr buffer)

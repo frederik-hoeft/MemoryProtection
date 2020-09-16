@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace MemoryProtection.SelfProtection.MemoryProtection
+namespace MemoryProtection.MemoryProtection
 {
     public interface IProtectedString : IDisposable
     {
