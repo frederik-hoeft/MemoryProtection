@@ -44,6 +44,14 @@ namespace MemoryProtection
             Marshal.Copy(buffer, 0, destination, length);
         }
 
+        internal static unsafe void Copy(uint[] source, int startIndex, uint* destination, int length)
+        {
+            for (int i = 0; i < length; i++)
+            {
+                destination[i] = source[i + startIndex];
+            }
+        }
+
         internal static void CopyWithBuffer(IntPtr source, int sourceOffset, IntPtr destination, int destinationOffset, int length, IntPtr buffer)
         {
             Copy(source, sourceOffset, buffer, 0, length);

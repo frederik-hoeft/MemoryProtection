@@ -1,6 +1,9 @@
-﻿using MemoryProtection;
+﻿using Blake2Fast;
+using MemoryProtection;
 using MemoryProtection.MemoryProtection;
 using MemoryProtection.MemoryProtection.Cryptography;
+using MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected;
+using MemoryProtection.MemoryProtection.Cryptography.Blake2Protected;
 using MemoryProtection.MemoryProtection.Cryptography.Sha256Protected;
 using MemoryProtection.MemoryProtection.ProtectedString;
 using MemoryProtection.MemoryProtection.Win32;
@@ -19,7 +22,40 @@ namespace MemoryProtection
         private static void Main(string[] args)
         {
             // Call whatever test method you want.
-            Sha256PerfTest();
+            Blake2Tests();
+        }
+
+        private static void Blake2PerfTest()
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes("Lorem ipsum dolor sit amet, consectetur adipiscing elit.");
+            using ProtectedMemory protectedMemory = ProtectedMemory.Allocate(bytes.Length);
+            protectedMemory.Write(bytes, 0);
+            Blake2bProtectedCryptoProvider blake2 = new Blake2bProtectedCryptoProvider();
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            for (int i = 0; i < 1000000; i++)
+            {
+                _ = blake2.ComputeHash(protectedMemory);
+            }
+            stopwatch.Stop();
+            Console.WriteLine("1000000 hashes done in " + stopwatch.Elapsed.ToString());
+            double t = stopwatch.ElapsedMilliseconds / 1000000d;
+            Console.WriteLine(" * " + t.ToString() + " ms per digest.");
+            Console.WriteLine(" * " + (1000d / t).ToString() + " hashes per second.");
+        }
+
+        private static void Blake2Tests()
+        {
+            const string input = "ABCD";
+            byte[] bytes = Encoding.UTF8.GetBytes(input);
+            using ProtectedMemory protectedMemory = ProtectedMemory.Allocate(bytes.Length);
+            protectedMemory.Write(bytes, 0);
+            Blake2bProtectedCryptoProvider blake2 = new Blake2bProtectedCryptoProvider();
+            Console.WriteLine(blake2.ComputeHash(protectedMemory));
+
+            byte[] hashedBytes = Blake2b.ComputeHash(32, Encoding.UTF8.GetBytes(input));
+            Console.WriteLine(Blake2ProtectedCryptoProvider.ByteArrayToString(hashedBytes));
+
         }
 
         private static void Sha256PerfTest()

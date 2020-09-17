@@ -71,8 +71,8 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
         {
             // convert string msg into 512-bit blocks (array of 16 32-bit integers) [§5.2.1]
             int contentLength = protectedMemory.ContentLength;
-            double length = (contentLength / 4d) + 3;                        // length (in 32-bit integers) of content length + ‘1’ + appended length
-            int blockCount = (int)Math.Ceiling(length / 16d);            // number of 16-integer (512-bit) blocks required to hold 'l' ints
+            double length = (contentLength / 4d) + 3;                   // length (in 32-bit integers) of content length + ‘1’ + appended length
+            int blockCount = (int)Math.Ceiling(length / 16d);           // number of 16-integer (512-bit) blocks required to hold 'l' ints
             int allocatedSize = blockCount * 16 * sizeof(int);
             IntPtr hMessageBuffer = Marshal.AllocHGlobal(allocatedSize);
             byte[] allocatedSizeZeros = new byte[allocatedSize];
@@ -109,7 +109,6 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
             IntPtr hBuffer = Marshal.AllocHGlobal(allocatedSize);
             int* buffer = (int*)hBuffer;
             int bufferLength = allocatedSize / sizeof(int);
-
             Marshal.Copy(allocatedSizeZeros, 0, hBuffer, allocatedSize);
             for (int i = 0; i < blockCount; i++)
             {
