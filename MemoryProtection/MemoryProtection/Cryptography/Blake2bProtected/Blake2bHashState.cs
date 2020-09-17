@@ -39,11 +39,9 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected
 		internal void Init(int digestLength)
 		{
 			hHash = Marshal.AllocHGlobal(HashBytes);
-			MarshalExtensions.ZeroMemory(hHash, HashBytes);
 			hash = (ulong*)hHash;
 
 			hBlock = Marshal.AllocHGlobal(BlockBytes);
-			MarshalExtensions.ZeroMemory(hBlock, BlockBytes);
 			block = (byte*)hBlock;
 
 			if (digestLength == 0 || (uint)digestLength > HashBytes)

@@ -1,19 +1,13 @@
 ﻿using Blake2Fast;
-using MemoryProtection;
 using MemoryProtection.MemoryProtection;
-using MemoryProtection.MemoryProtection.Cryptography;
 using MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected;
-using MemoryProtection.MemoryProtection.Cryptography.Blake2Protected;
 using MemoryProtection.MemoryProtection.Cryptography.Sha256Protected;
 using MemoryProtection.MemoryProtection.ProtectedString;
 using MemoryProtection.MemoryProtection.Win32;
 using System;
 using System.Diagnostics;
-using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
-using System.Security;
 using System.Text;
-using System.Threading;
 
 namespace MemoryProtection
 {
@@ -54,8 +48,7 @@ namespace MemoryProtection
             Console.WriteLine(blake2.ComputeHash(protectedMemory));
 
             byte[] hashedBytes = Blake2b.ComputeHash(32, Encoding.UTF8.GetBytes(input));
-            Console.WriteLine(Blake2ProtectedCryptoProvider.ByteArrayToString(hashedBytes));
-
+            Console.WriteLine(Blake2bProtectedCryptoProvider.ByteArrayToString(hashedBytes));
         }
 
         private static void Sha256PerfTest()
