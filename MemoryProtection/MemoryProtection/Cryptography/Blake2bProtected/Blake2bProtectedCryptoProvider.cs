@@ -7,24 +7,6 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected
 {
     public class Blake2bProtectedCryptoProvider : IProtectedHashFunction
     {
-        public ProtectedMemory ComputeHashProtected(ProtectedMemory protectedMemory)
-        {
-            IntPtr pHash = Digest(32, protectedMemory);
-            ProtectedMemory result = ProtectedMemory.Allocate(32);
-            result.Unprotect();
-            MarshalExtensions.Copy(pHash, 0, result.Handle, 0, 32);
-            result.Protect();
-            MarshalExtensions.ZeroMemory(pHash, 32);
-            Marshal.FreeHGlobal(pHash);
-            return result;
-        }
-
-        public ProtectedMemory ComputeHashProtected(IProtectedString protectedString)
-        {
-            using ProtectedMemory protectedMemory = protectedString.GetProtectedUtf8Bytes();
-            return ComputeHashProtected(protectedMemory);
-        }
-
         public string ComputeHash(ProtectedMemory protectedMemory)
         {
             IntPtr hash = Digest(32, protectedMemory);
@@ -42,21 +24,41 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected
             return ComputeHash(protectedMemory);
         }
 
+        public ProtectedMemory ComputeHashProtected(IProtectedString protectedString)
+        {
+            using ProtectedMemory protectedMemory = protectedString.GetProtectedUtf8Bytes();
+            return ComputeHashProtected(protectedMemory);
+        }
+
+        public ProtectedMemory ComputeHashProtected(ProtectedMemory protectedMemory)
+        {
+            IntPtr pHash = Digest(32, protectedMemory);
+            ProtectedMemory result = ProtectedMemory.Allocate(32);
+            using (ProtectedMemoryAccess access = new ProtectedMemoryAccess(result))
+            {
+                MarshalExtensions.Copy(pHash, 0, access.Handle, 0, 32);
+            }
+            MarshalExtensions.ZeroMemory(pHash, 32);
+            Marshal.FreeHGlobal(pHash);
+            return result;
+        }
+
         private unsafe IntPtr Digest(int digestLength, ProtectedMemory protectedMemory)
         {
-            Blake2bHashState hashState = default;
-            hashState.Init(digestLength);
+            Blake2bHashState blake2 = default;
+            blake2.Init(digestLength);
             int length = protectedMemory.ContentLength;
             IntPtr hInput = Marshal.AllocHGlobal(length);
-            protectedMemory.Unprotect();
-            MarshalExtensions.Copy(protectedMemory.Handle, 0, hInput, 0, length);
-            protectedMemory.Protect();
+            using (ProtectedMemoryAccess access = new ProtectedMemoryAccess(protectedMemory))
+            {
+                MarshalExtensions.Copy(access.Handle, 0, hInput, 0, length);
+            }
             byte* input = (byte*)hInput;
-            hashState.Update(input, length);
+            blake2.Update(input, length);
             MarshalExtensions.ZeroMemory(hInput, length);
             Marshal.FreeHGlobal(hInput);
-            IntPtr hash = hashState.Finish();
-            hashState.Free();
+            IntPtr hash = blake2.Finish();
+            blake2.Free();
             return hash;
         }
 

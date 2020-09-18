@@ -16,7 +16,10 @@
 
   <ItemGroup>
     <None Remove="MemoryProtection\Cryptography\ProtectedAesProvider.cs~RF17410b9.TMP" />
+    <None Remove="MemoryProtection\Cryptography\ScryptProtected\ScryptHashFunction.cs~RF82207d.TMP" />
     <None Remove="MemoryProtection\Cryptography\Sha256ProtectedCryptoProvider.cs~RF1760f62.TMP" />
+    <None Remove="MemoryProtection\ProtectedMemory.cs~RFf28d07.TMP" />
+    <None Remove="MemoryProtection\ProtectedMemoryAccessProvider.cs~RFd745ab.TMP" />
     <None Remove="MemoryProtection\ProtectedString.cs~RF2622892.TMP" />
     <None Remove="MemoryProtection\ProtectedString.cs~RF2631070.TMP" />
     <None Remove="MemoryProtection\Win32EncryptedMemory.cs~RF1d6303d.TMP" />

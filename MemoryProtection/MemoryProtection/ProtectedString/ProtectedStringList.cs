@@ -84,36 +84,33 @@ namespace MemoryProtection.MemoryProtection.ProtectedString
             return Equals((ProtectedStringList)other);
         }
 
-        public ProtectedMemory GetProtectedUtf8Bytes()
+        public unsafe ProtectedMemory GetProtectedUtf8Bytes()
         {
             ProtectedMemory result = ProtectedMemory.Allocate(rawContentLength);
-            result.Unprotect();
-            ProtectedStringNode node = head;
-            int offset = 0;
-            for (int i = 0; i < Length; i++)
+            using (ProtectedMemoryAccess resultAccess = new ProtectedMemoryAccess(result))
             {
-                ProtectedMemory protectedNodeMemory = node.GetProtectedMemory();
-                try
+                byte* memory = (byte*)resultAccess.Handle;
+                ProtectedStringNode node = head;
+                int offset = 0;
+                for (int i = 0; i < Length; i++)
                 {
-                    protectedNodeMemory.Unprotect();
-                    for (int j = 0; j < 4; j++)
+                    ProtectedMemory protectedNodeMemory = node.GetProtectedMemory();
+                    using (ProtectedMemoryAccess access = new ProtectedMemoryAccess(protectedNodeMemory))
                     {
-                        byte b = Marshal.ReadByte(protectedNodeMemory.Handle + j);
-                        if (b == 0x0)
+                        byte* nodeMemory = (byte*)access.Handle;
+                        for (int j = 0; j < 4; j++)
                         {
-                            break;
+                            if (nodeMemory[j] == 0x0)
+                            {
+                                break;
+                            }
+                            memory[offset] = nodeMemory[j];
+                            offset++;
                         }
-                        Marshal.WriteByte(result.Handle + offset, b);
-                        offset++;
                     }
+                    node = node.Next;
                 }
-                finally
-                {
-                    protectedNodeMemory.Protect();
-                }
-                node = node.Next;
             }
-            result.Protect();
             return result;
         }
     }

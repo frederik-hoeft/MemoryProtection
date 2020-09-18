@@ -11,8 +11,11 @@ namespace MemoryProtection.MemoryProtection
     public abstract class ProtectedMemory : IDisposable
     {
         private protected IntPtr rawHandle;
+        private protected IntPtr directHandle;
 
-        public IntPtr Handle { get; private protected set; }
+        [Obsolete("Unless you have a good reason for it use ProtectedMemoryAccess instead!", false)]
+        public IntPtr GetDirectHandle() => directHandle;
+
         public int Size { get; private protected set; }
 
         public int ContentLength { get; private protected set; }
@@ -41,7 +44,7 @@ namespace MemoryProtection.MemoryProtection
                 {
                     throw new IndexOutOfRangeException("Buffer overflow!");
                 }
-                Marshal.Copy(bytes, 0, Handle + offset, bytes.Length);
+                Marshal.Copy(bytes, 0, directHandle + offset, bytes.Length);
                 if (offset + bytes.Length > ContentLength)
                 {
                     ContentLength = offset + bytes.Length;
@@ -57,7 +60,7 @@ namespace MemoryProtection.MemoryProtection
 
         public virtual void CopyTo(int startIndex, ProtectedMemory destination, int destinationOffset, int length)
         {
-            if (Size - startIndex > destination.Size - destinationOffset)
+            if (ContentLength - startIndex > destination.ContentLength - destinationOffset)
             {
                 throw new ArgumentException("Destination cannot be smaller than source!");
             }
@@ -65,7 +68,7 @@ namespace MemoryProtection.MemoryProtection
             {
                 destination.Unprotect();
                 Unprotect();
-                MarshalExtensions.Copy(Handle, startIndex, destination.Handle, destinationOffset, length);
+                MarshalExtensions.Copy(directHandle, startIndex, destination.directHandle, destinationOffset, length);
             }
             finally
             {
@@ -79,7 +82,7 @@ namespace MemoryProtection.MemoryProtection
             try
             {
                 Unprotect();
-                return Marshal.ReadByte(Handle + offset);
+                return Marshal.ReadByte(directHandle + offset);
             }
             finally
             {
@@ -96,7 +99,7 @@ namespace MemoryProtection.MemoryProtection
                 {
                     throw new IndexOutOfRangeException("Buffer overflow!");
                 }
-                Marshal.WriteByte(Handle + offset, b);
+                Marshal.WriteByte(directHandle + offset, b);
                 if (offset > ContentLength)
                 {
                     ContentLength = offset;
@@ -110,7 +113,7 @@ namespace MemoryProtection.MemoryProtection
 
         private protected bool IsOutOfBoundes(int offset)
         {
-            return (ulong)Handle + (uint)offset > (ulong)Handle + (uint)Size;
+            return (ulong)directHandle + (uint)offset > (ulong)directHandle + (uint)Size;
         }
 
         public abstract void Free();
@@ -154,7 +157,7 @@ namespace MemoryProtection.MemoryProtection
                 other.Unprotect();
                 for (int i = 0; i < Size; i++)
                 {
-                    if (Marshal.ReadByte(Handle + i) != Marshal.ReadByte(other.Handle + i))
+                    if (Marshal.ReadByte(directHandle + i) != Marshal.ReadByte(other.directHandle + i))
                     {
                         return false;
                     }
@@ -184,8 +187,8 @@ namespace MemoryProtection.MemoryProtection
             {
                 memory.Unprotect();
                 // We're shifting right, so we need a buffer because we'd override data we still need to copy.
-                MarshalExtensions.CopyWithBuffer(memory.Handle, 0, memory.Handle, offset, length, buffer);
-                MarshalExtensions.ZeroMemory(memory.Handle, offset);
+                MarshalExtensions.CopyWithBuffer(memory.directHandle, 0, memory.directHandle, offset, length, buffer);
+                MarshalExtensions.ZeroMemory(memory.directHandle, offset);
                 return memory;
             }
             finally
@@ -209,9 +212,9 @@ namespace MemoryProtection.MemoryProtection
             try
             {
                 memory.Unprotect();
-                MarshalExtensions.Copy(memory.Handle, offset, memory.Handle, 0, memory.ContentLength - offset);
+                MarshalExtensions.Copy(memory.directHandle, offset, memory.directHandle, 0, memory.ContentLength - offset);
                 byte[] zeros = new byte[offset];
-                Marshal.Copy(zeros, 0, memory.Handle + memory.ContentLength - offset, offset);
+                Marshal.Copy(zeros, 0, memory.directHandle + memory.ContentLength - offset, offset);
                 return memory;
             }
             finally

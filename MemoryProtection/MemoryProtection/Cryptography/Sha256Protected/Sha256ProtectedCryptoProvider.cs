@@ -22,20 +22,78 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
         private static readonly uint[] H = new uint[] {
             0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19 };
 
+        private const int blockSize = 0x40;
         private const int digestLength = 0x20;
         private const int msgSchedBufSize = 64 * sizeof(int);
 
-        public ProtectedMemory ComputeHashProtected(ProtectedMemory protectedMemory)
+        public ProtectedMemory ComputeHmacProtected(IProtectedString key, IProtectedString message)
+        {
+            using ProtectedMemory mKey = key.GetProtectedUtf8Bytes();
+            using ProtectedMemory mMessage = message.GetProtectedUtf8Bytes();
+            return ComputeHmacProtected(mKey, mMessage);
+        }
+
+        public unsafe ProtectedMemory ComputeHmacProtected(ProtectedMemory key, ProtectedMemory message)
+        {
+            if (key.ContentLength > blockSize)
+            {
+                using ProtectedMemory reducedKey = ComputeHashProtected(key);
+                return ComputeHmacProtected(reducedKey, message);
+            }
+            using ProtectedMemory paddedKey = ProtectedMemory.Allocate(blockSize);
+            key.CopyTo(0, paddedKey, 0, key.ContentLength);
+            using ProtectedMemory outerKeyPadded = ProtectedMemory.Allocate(blockSize);
+            using ProtectedMemory innerKeyPadded = ProtectedMemory.Allocate(blockSize);
+            paddedKey.CopyTo(0, outerKeyPadded, 0, blockSize);
+            paddedKey.CopyTo(0, innerKeyPadded, 0, blockSize);
+            using (ProtectedMemoryAccess outerKeyAccess = new ProtectedMemoryAccess(outerKeyPadded))
+            {
+                byte* outerKeyData = (byte*)outerKeyAccess.Handle;
+                for (int i = 0; i < blockSize; i++)
+                {
+                    outerKeyData[i] ^= 0x5c;
+                }
+            }
+            using (ProtectedMemoryAccess innerKeyAccess = new ProtectedMemoryAccess(outerKeyPadded))
+            {
+                byte* innerKeyData = (byte*)innerKeyAccess.Handle;
+                for (int i = 0; i < blockSize; i++)
+                {
+                    innerKeyData[i] ^= 0x36;
+                }
+            }
+            using ProtectedMemory innerInput = ProtectedMemory.Allocate(blockSize + message.ContentLength);
+            innerKeyPadded.CopyTo(0, innerInput, 0, blockSize);
+            message.CopyTo(0, innerInput, blockSize, message.ContentLength);
+            using ProtectedMemory innerHash = ComputeHashProtected(innerInput);
+            using ProtectedMemory input = ProtectedMemory.Allocate(blockSize + digestLength);
+            outerKeyPadded.CopyTo(0, input, 0, blockSize);
+            innerHash.CopyTo(0, input, blockSize, digestLength);
+            return ComputeHashProtected(input);
+        }
+
+        public string ComputeHmac(ProtectedMemory key, ProtectedMemory message)
+        {
+            ProtectedMemory hash = ComputeHmacProtected(key, message);
+            byte[] resultBytes = hash.Read(0, digestLength);
+            string result = ByteArrayToString(resultBytes);
+            hash.Free();
+            return result;
+        }
+
+        public unsafe ProtectedMemory ComputeHashProtected(ProtectedMemory protectedMemory)
         {
             IntPtr pHash = Digest(protectedMemory);
             ProtectedMemory result = ProtectedMemory.Allocate(digestLength);
-            result.Unprotect();
-            for (int i = 0; i < (digestLength / 2); i++)
+            using (ProtectedMemoryAccess access = new ProtectedMemoryAccess(result))
             {
-                short b = Marshal.ReadInt16(pHash + (2 * i));
-                Marshal.WriteInt16(result.Handle + (2 * i), b);
+                ushort* source = (ushort*)pHash;
+                ushort* destination = (ushort*)access.Handle;
+                for (int i = 0; i < (digestLength / 2); i++)
+                {
+                    destination[i] = source[i];
+                }
             }
-            result.Protect();
             byte[] zeros = new byte[digestLength];
             Marshal.Copy(zeros, 0, pHash, digestLength);
             Marshal.FreeHGlobal(pHash);
@@ -78,12 +136,11 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
             byte[] allocatedSizeZeros = new byte[allocatedSize];
             Marshal.Copy(allocatedSizeZeros, 0, hMessageBuffer, allocatedSize);
             byte* messageBuffer = (byte*)hMessageBuffer;
-            try
+            using (ProtectedMemoryAccess access = new ProtectedMemoryAccess(protectedMemory))
             {
-                protectedMemory.Unprotect();
                 if ((contentLength & 1) == 1)
                 {
-                    byte* pProtectedMemory = (byte*)protectedMemory.Handle;
+                    byte* pProtectedMemory = (byte*)access.Handle;
                     for (int i = 0; i < contentLength; i++)
                     {
                         messageBuffer[i] = pProtectedMemory[i];
@@ -91,17 +148,13 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
                 }
                 else
                 {
-                    short* pProtectedMemory = (short*)protectedMemory.Handle;
-                    short* pMessageBuffer = (short*)hMessageBuffer;
+                    ushort* pProtectedMemory = (ushort*)access.Handle;
+                    ushort* pMessageBuffer = (ushort*)hMessageBuffer;
                     for (int i = 0; i < (contentLength / 2); i++)
                     {
                         pMessageBuffer[i] = pProtectedMemory[i];
                     }
                 }
-            }
-            finally
-            {
-                protectedMemory.Protect();
             }
             // append padding
             messageBuffer[contentLength] = 0x80;

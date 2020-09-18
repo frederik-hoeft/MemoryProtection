@@ -16,7 +16,7 @@ namespace MemoryProtection
         private static void Main(string[] args)
         {
             // Call whatever test method you want.
-            Blake2Tests();
+            Sha256HmacTests();
         }
 
         private static void Blake2PerfTest()
@@ -49,6 +49,18 @@ namespace MemoryProtection
 
             byte[] hashedBytes = Blake2b.ComputeHash(32, Encoding.UTF8.GetBytes(input));
             Console.WriteLine(Blake2bProtectedCryptoProvider.ByteArrayToString(hashedBytes));
+        }
+
+        private static void Sha256HmacTests()
+        {
+            byte[] key = Encoding.UTF8.GetBytes("ABCD");
+            byte[] message = Encoding.UTF8.GetBytes("ABCD");
+            using ProtectedMemory protectedKey = ProtectedMemory.Allocate(key.Length);
+            using ProtectedMemory protectedMessage = ProtectedMemory.Allocate(message.Length);
+            protectedKey.Write(key, 0);
+            protectedMessage.Write(message, 0);
+            Sha256ProtectedCryptoProvider sha256 = new Sha256ProtectedCryptoProvider();
+            Console.WriteLine(sha256.ComputeHmac(protectedKey, protectedMessage));
         }
 
         private static void Sha256PerfTest()
@@ -217,10 +229,12 @@ namespace MemoryProtection
             Console.ReadLine();
             protectedMemory.Protect();
             Console.WriteLine("Protected!");
-            Console.ReadLine();
-            Console.WriteLine("Trying direct read (should fail)");
             byte[] bytes = new byte[8];
-            Marshal.Copy(protectedMemory.Handle, bytes, 0, bytes.Length);
+            Console.WriteLine("Trying to access protected memory (should fail)");
+            Console.ReadLine();
+#pragma warning disable CS0618 // Type or member is obsolete
+            Marshal.Copy(protectedMemory.GetDirectHandle(), bytes, 0, bytes.Length);
+#pragma warning restore CS0618 // Type or member is obsolete
             PrintArray(bytes);
         }
 

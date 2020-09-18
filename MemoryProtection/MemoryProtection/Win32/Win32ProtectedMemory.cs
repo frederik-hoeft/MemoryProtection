@@ -39,17 +39,17 @@ namespace MemoryProtection.MemoryProtection.Win32
             Size = (int)(requiredPages * pageSize);
             pUsableSize = new UIntPtr((uint)Size);
             rawHandle = Marshal.AllocHGlobal(allocatedSize);
-            Handle = rawHandle + (int)pageSize;
-            MarshalExtensions.ZeroMemory(Handle, Size);
+            directHandle = rawHandle + (int)pageSize;
+            MarshalExtensions.ZeroMemory(directHandle, Size);
             ContentLength = size;
             Protect();
         }
 
         public override byte[] Read(int offset, int length)
         {
-            VirtualProtect(Handle, pUsableSize, PAGE_READONLY, out _);
+            VirtualProtect(directHandle, pUsableSize, PAGE_READONLY, out _);
             byte[] bytes = new byte[length];
-            Marshal.Copy(Handle + offset, bytes, 0, length);
+            Marshal.Copy(directHandle + offset, bytes, 0, length);
             Protect();
             return bytes;
         }
@@ -57,18 +57,18 @@ namespace MemoryProtection.MemoryProtection.Win32
         public override void Free()
         {
             Unprotect();
-            MarshalExtensions.ZeroMemory(Handle, Size);
+            MarshalExtensions.ZeroMemory(directHandle, Size);
             Marshal.FreeHGlobal(rawHandle);
         }
 
         public override void Protect()
         {
-            VirtualProtect(Handle, pUsableSize, PAGE_NOACCESS, out _);
+            VirtualProtect(directHandle, pUsableSize, PAGE_NOACCESS, out _);
         }
 
         public override void Unprotect()
         {
-            VirtualProtect(Handle, pUsableSize, PAGE_READWRITE, out _);
+            VirtualProtect(directHandle, pUsableSize, PAGE_READWRITE, out _);
         }
 
         [StructLayout(LayoutKind.Explicit)]

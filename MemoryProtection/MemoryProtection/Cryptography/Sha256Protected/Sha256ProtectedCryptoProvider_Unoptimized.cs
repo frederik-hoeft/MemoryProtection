@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Mail;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -29,9 +30,10 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
         {
             IntPtr pHash = Digest(protectedMemory);
             ProtectedMemory result = ProtectedMemory.Allocate(digestLength);
-            result.Unprotect();
-            MarshalExtensions.Copy(pHash, 0, result.Handle, 0, digestLength);
-            result.Protect();
+            using (ProtectedMemoryAccess access = new ProtectedMemoryAccess(protectedMemory))
+            {
+                MarshalExtensions.Copy(pHash, 0, access.Handle, 0, digestLength);
+            }
             MarshalExtensions.ZeroMemory(pHash, digestLength);
             Marshal.FreeHGlobal(pHash);
             return result;
@@ -69,14 +71,9 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
             int allocatedSize = blockCount * 16 * sizeof(int);
             IntPtr messageBuffer = Marshal.AllocHGlobal(allocatedSize);
             MarshalExtensions.ZeroMemory(messageBuffer, allocatedSize);
-            try
+            using (ProtectedMemoryAccess access = new ProtectedMemoryAccess(protectedMemory))
             {
-                protectedMemory.Unprotect();
-                MarshalExtensions.Copy(protectedMemory.Handle, 0, messageBuffer, 0, contentLength);
-            }
-            finally
-            {
-                protectedMemory.Protect();
+                MarshalExtensions.Copy(access.Handle, 0, messageBuffer, 0, contentLength);
             }
             // append padding
             Marshal.WriteByte(messageBuffer + contentLength, 0x80);

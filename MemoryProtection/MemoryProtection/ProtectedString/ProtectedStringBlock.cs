@@ -35,39 +35,31 @@ namespace MemoryProtection.MemoryProtection.ProtectedString
             Length++;
         }
 
-        public bool Equals(ProtectedStringBlock other)
+        public unsafe bool Equals(ProtectedStringBlock other)
         {
             if (Length != other.Length)
             {
                 return false;
             }
-            try
+            using ProtectedMemoryAccess access = new ProtectedMemoryAccess(protectedMemory);
+            using ProtectedMemoryAccess otherAccess = new ProtectedMemoryAccess(other.protectedMemory);
+            byte* memory = (byte*)access.Handle;
+            byte* otherMemory = (byte*)otherAccess.Handle;
+            byte lastByte = 0;
+            for (int i = 0; i < protectedMemory.Size; i++)
             {
-                protectedMemory.Unprotect();
-                other.protectedMemory.Unprotect();
-                byte lastByte = 0;
-                for (int i = 0; i < protectedMemory.Size; i++)
+                if (memory[i] != otherMemory[i])
                 {
-                    byte thisByte = Marshal.ReadByte(protectedMemory.Handle + i);
-                    byte otherByte = Marshal.ReadByte(other.protectedMemory.Handle + i);
-                    if (thisByte != otherByte)
-                    {
-                        return false;
-                    }
-                    if (thisByte == 0 && lastByte == 0)
-                    {
-                        // null terminator reached
-                        return true;
-                    }
-                    lastByte = thisByte;
+                    return false;
                 }
-                return true;
+                if (memory[i] == 0 && lastByte == 0)
+                {
+                    // null terminator reached
+                    return true;
+                }
+                lastByte = memory[i];
             }
-            finally
-            {
-                protectedMemory.Protect();
-                other.protectedMemory.Protect();
-            }
+            return true;
         }
 
         public void Dispose()

@@ -36,35 +36,35 @@ namespace MemoryProtection.MemoryProtection.Win32
             }
             uint requiredBlocks = (uint)Math.Ceiling((double)size / CRYPTPROTECTMEMORY_BLOCK_SIZE);
             Size = (int)(requiredBlocks * CRYPTPROTECTMEMORY_BLOCK_SIZE);
-            Handle = Marshal.AllocHGlobal(Size);
-            MarshalExtensions.ZeroMemory(Handle, Size);
+            directHandle = Marshal.AllocHGlobal(Size);
+            MarshalExtensions.ZeroMemory(directHandle, Size);
             Protect();
         }
 
         public override void Free()
         {
             Unprotect();
-            MarshalExtensions.ZeroMemory(Handle, Size);
-            Marshal.FreeHGlobal(Handle);
+            MarshalExtensions.ZeroMemory(directHandle, Size);
+            Marshal.FreeHGlobal(directHandle);
         }
 
         public override void Protect()
         {
-            CryptProtectMemory(Handle, (uint)Size, CRYPTPROTECTMEMORY_SAME_PROCESS);
+            CryptProtectMemory(directHandle, (uint)Size, CRYPTPROTECTMEMORY_SAME_PROCESS);
         }
 
         public override byte[] Read(int offset, int length)
         {
             Unprotect();
             byte[] bytes = new byte[length];
-            Marshal.Copy(Handle + offset, bytes, 0, length);
+            Marshal.Copy(directHandle + offset, bytes, 0, length);
             Protect();
             return bytes;
         }
 
         public override void Unprotect()
         {
-            CryptUnprotectMemory(Handle, (uint)Size, CRYPTPROTECTMEMORY_SAME_PROCESS);
+            CryptUnprotectMemory(directHandle, (uint)Size, CRYPTPROTECTMEMORY_SAME_PROCESS);
         }
     }
 }

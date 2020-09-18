@@ -51,38 +51,38 @@ namespace MemoryProtection.MemoryProtection.Linux
             int ret = posix_memalign(&memptr, pageSize, allocatedSize);
             Console.WriteLine("posix_memalign returned 0x" + ret.ToString("x"));
             Console.WriteLine("memptr is 0x" + ((ulong)memptr).ToString("x"));
-            Handle = (IntPtr)memptr;
-            MarshalExtensions.ZeroMemory(Handle, Size);
+            directHandle = (IntPtr)memptr;
+            MarshalExtensions.ZeroMemory(directHandle, Size);
             Console.WriteLine("Zeroed memory!");
             ContentLength = size;
-            ret = mprotect(Handle, allocatedSize, (int)PROT_FLAGS.PROT_NONE);
+            ret = mprotect(directHandle, allocatedSize, (int)PROT_FLAGS.PROT_NONE);
             Console.WriteLine("mprotect returned 0x" + ret.ToString("x"));
         }
 
         public override void Free()
         {
             Unprotect();
-            MarshalExtensions.ZeroMemory(Handle, Size);
-            free(Handle);
+            MarshalExtensions.ZeroMemory(directHandle, Size);
+            free(directHandle);
         }
 
         public override void Protect()
         {
-            _ = mprotect(Handle, (uint)Size, (int)PROT_FLAGS.PROT_NONE);
+            _ = mprotect(directHandle, (uint)Size, (int)PROT_FLAGS.PROT_NONE);
         }
 
         public override byte[] Read(int offset, int length)
         {
-            _ = mprotect(Handle, (uint)Size, (int)PROT_FLAGS.PROT_READ);
+            _ = mprotect(directHandle, (uint)Size, (int)PROT_FLAGS.PROT_READ);
             byte[] bytes = new byte[length];
-            Marshal.Copy(Handle + offset, bytes, 0, length);
+            Marshal.Copy(directHandle + offset, bytes, 0, length);
             Protect();
             return bytes;
         }
 
         public override void Unprotect()
         {
-            _ = mprotect(Handle, (uint)Size, (int)(PROT_FLAGS.PROT_WRITE | PROT_FLAGS.PROT_READ));
+            _ = mprotect(directHandle, (uint)Size, (int)(PROT_FLAGS.PROT_WRITE | PROT_FLAGS.PROT_READ));
         }
 
         [Flags]

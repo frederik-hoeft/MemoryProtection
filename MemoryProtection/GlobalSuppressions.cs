@@ -8,3 +8,4 @@ using System.Diagnostics.CodeAnalysis;
 [assembly: SuppressMessage("Design", "CA1063:Implement IDisposable Correctly", Justification = "<Pending>", Scope = "type", Target = "~T:MemoryProtection.MemoryProtection.ProtectedMemory")]
 [assembly: SuppressMessage("Design", "CA1063:Implement IDisposable Correctly", Justification = "<Pending>", Scope = "type", Target = "~T:MemoryProtection.MemoryProtection.ProtectedString.ProtectedStringList")]
 [assembly: SuppressMessage("Design", "CA1063:Implement IDisposable Correctly", Justification = "<Pending>", Scope = "type", Target = "~T:MemoryProtection.MemoryProtection.ProtectedString.ProtectedStringBlock")]
+[assembly: SuppressMessage("Design", "CA1063:Implement IDisposable Correctly", Justification = "<Pending>", Scope = "type", Target = "~T:MemoryProtection.MemoryProtection.ProtectedMemoryAccess")]
