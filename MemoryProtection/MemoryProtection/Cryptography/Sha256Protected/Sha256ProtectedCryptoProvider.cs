@@ -54,7 +54,7 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
                     outerKeyData[i] ^= 0x5c;
                 }
             }
-            using (ProtectedMemoryAccess innerKeyAccess = new ProtectedMemoryAccess(outerKeyPadded))
+            using (ProtectedMemoryAccess innerKeyAccess = new ProtectedMemoryAccess(innerKeyPadded))
             {
                 byte* innerKeyData = (byte*)innerKeyAccess.Handle;
                 for (int i = 0; i < blockSize; i++)
