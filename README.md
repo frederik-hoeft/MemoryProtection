@@ -1,5 +1,5 @@
 # MemoryProtection
-A collection of anti debug methods
+A collection of anti debug methods and crypto algorithms using protected memory only. Intended for dealing with passwords and confidential data.
 
 #### TODO: 
 - [ ] documentation
