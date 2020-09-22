@@ -16,7 +16,7 @@ namespace MemoryProtection
         private static void Main(string[] args)
         {
             // Call whatever test method you want.
-            Sha256HmacTests();
+            Sha256Tests();
         }
 
         private static void Blake2PerfTest()
@@ -82,13 +82,17 @@ namespace MemoryProtection
             Console.WriteLine(" * " + (1000d / t).ToString() + " hashes per second.");
         }
 
-        private static void Sha256Tests()
+        private static unsafe void Sha256Tests()
         {
             byte[] bytes = Encoding.UTF8.GetBytes("ABCD");
             using ProtectedMemory protectedMemory = ProtectedMemory.Allocate(bytes.Length);
             protectedMemory.Write(bytes, 0);
             Sha256ProtectedCryptoProvider sha256 = new Sha256ProtectedCryptoProvider();
             Console.WriteLine(sha256.ComputeHash(protectedMemory));
+            fixed (byte* b = bytes)
+            {
+                Console.WriteLine(sha256.ComputeHashUnsafe(b, bytes.Length));
+            }
         }
 
         private static void ShiftingTest()

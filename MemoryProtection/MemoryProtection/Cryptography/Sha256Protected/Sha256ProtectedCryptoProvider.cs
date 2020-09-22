@@ -33,6 +33,54 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
             return ComputeHmacProtected(mKey, mMessage);
         }
 
+        public unsafe (IntPtr, int) ComputeHmacUnsafe(byte* key, int keyLength, byte* message, int messageLength, bool freeKey = false)
+        {
+            if (keyLength > blockSize)
+            {
+                (IntPtr reducedKey, _) = ComputeHashUnsafe(key, keyLength);
+                return ComputeHmacUnsafe((byte*)reducedKey, digestLength, message, messageLength, freeKey = true);
+            }
+            IntPtr hPaddedKey = Marshal.AllocHGlobal(blockSize);
+            Unsafe.CopyBlock((byte*)hPaddedKey, key, (uint)keyLength);
+            if (freeKey)
+            {
+                MarshalExtensions.ZeroFree((IntPtr)key, keyLength);
+            }
+            IntPtr hOuterKeyPadded = Marshal.AllocHGlobal(blockSize);
+            IntPtr hInnerKeyPadded = Marshal.AllocHGlobal(blockSize);
+            byte* outerKeyPadded = (byte*)hOuterKeyPadded;
+            byte* innerKeyPadded = (byte*)hInnerKeyPadded;
+            Unsafe.CopyBlock(outerKeyPadded, (void*)hPaddedKey, blockSize);
+            Unsafe.CopyBlock(innerKeyPadded, (void*)hPaddedKey, blockSize);
+            MarshalExtensions.ZeroFree(hPaddedKey, blockSize);
+            for (int i = 0; i < blockSize; i++)
+            {
+                outerKeyPadded[i] ^= 0x5c;
+            }
+            for (int i = 0; i < blockSize; i++)
+            {
+                innerKeyPadded[i] ^= 0x36;
+            }
+            int innerInputLength = blockSize + messageLength;
+            IntPtr hInnerInput = Marshal.AllocHGlobal(innerInputLength);
+            byte* innerInput = (byte*)hInnerInput;
+            Unsafe.CopyBlock(innerInput, innerKeyPadded, blockSize);
+            MarshalExtensions.ZeroFree(hInnerKeyPadded, blockSize);
+            Unsafe.CopyBlock(innerInput + blockSize, message, (uint)messageLength);
+            (IntPtr hInnerHash, _) = ComputeHashUnsafe(innerInput, innerInputLength);
+            MarshalExtensions.ZeroFree(hInnerInput, innerInputLength);
+            const int inputLength = blockSize + digestLength;
+            IntPtr hInput = Marshal.AllocHGlobal(inputLength);
+            byte* input = (byte*)hInput;
+            Unsafe.CopyBlock(input, outerKeyPadded, blockSize);
+            Unsafe.CopyBlock(input + blockSize, (void*)hInnerHash, digestLength);
+            (IntPtr hResult, int resultLength) = ComputeHashUnsafe(input, inputLength);
+            MarshalExtensions.ZeroFree(hOuterKeyPadded, blockSize);
+            MarshalExtensions.ZeroFree(hInnerHash, digestLength);
+            MarshalExtensions.ZeroFree(hInput, inputLength);
+            return (hResult, resultLength);
+        }
+
         public unsafe ProtectedMemory ComputeHmacProtected(ProtectedMemory key, ProtectedMemory message)
         {
             if (key.ContentLength > blockSize)
@@ -81,6 +129,11 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
             return result;
         }
 
+        public unsafe (IntPtr, int) ComputeHashUnsafe(byte* memory, int size)
+        {
+            return (Digest(memory, size), digestLength);
+        }
+
         public unsafe ProtectedMemory ComputeHashProtected(ProtectedMemory protectedMemory)
         {
             IntPtr pHash = Digest(protectedMemory);
@@ -108,7 +161,16 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
 
         public string ComputeHash(ProtectedMemory protectedMemory)
         {
-            IntPtr hash = Digest(protectedMemory);
+            return ComputeHelper(Digest(protectedMemory));
+        }
+
+        public unsafe string ComputeHash(byte* memory, int size)
+        {
+            return ComputeHelper(Digest(memory, size));
+        }
+
+        private string ComputeHelper(IntPtr hash)
+        {
             byte[] resultBytes = new byte[digestLength];
             Marshal.Copy(hash, resultBytes, 0, digestLength);
             string result = ByteArrayToString(resultBytes);
@@ -124,17 +186,22 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
             return ComputeHash(protectedMemory);
         }
 
-        // This is what can only be called "optimized garbage" ... but it's more than twice as fast.
-        private unsafe IntPtr Digest(ProtectedMemory protectedMemory)
+
+        private void Init(int size, out int contentLength, out int blockCount, out int allocatedSize, out IntPtr hMessageBuffer)
         {
             // convert string msg into 512-bit blocks (array of 16 32-bit integers) [§5.2.1]
-            int contentLength = protectedMemory.ContentLength;
+            contentLength = size;
             double length = (contentLength / 4d) + 3;                   // length (in 32-bit integers) of content length + ‘1’ + appended length
-            int blockCount = (int)Math.Ceiling(length / 16d);           // number of 16-integer (512-bit) blocks required to hold 'l' ints
-            int allocatedSize = blockCount * 16 * sizeof(int);
-            IntPtr hMessageBuffer = Marshal.AllocHGlobal(allocatedSize);
+            blockCount = (int)Math.Ceiling(length / 16d);           // number of 16-integer (512-bit) blocks required to hold 'l' ints
+            allocatedSize = blockCount * 16 * sizeof(int);
+            hMessageBuffer = Marshal.AllocHGlobal(allocatedSize);
             byte[] allocatedSizeZeros = new byte[allocatedSize];
             Marshal.Copy(allocatedSizeZeros, 0, hMessageBuffer, allocatedSize);
+        }
+
+        private unsafe IntPtr Digest(ProtectedMemory protectedMemory)
+        {
+            Init(protectedMemory.ContentLength, out int contentLength, out int blockCount, out int allocatedSize, out IntPtr hMessageBuffer);
             byte* messageBuffer = (byte*)hMessageBuffer;
             using (ProtectedMemoryAccess access = new ProtectedMemoryAccess(protectedMemory))
             {
@@ -158,11 +225,28 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
             }
             // append padding
             messageBuffer[contentLength] = 0x80;
+            return Compute(hMessageBuffer, allocatedSize, contentLength, blockCount);
+        }
 
+        private unsafe IntPtr Digest(byte* memory, int size)
+        {
+            Init(size, out int contentLength, out int blockCount, out int allocatedSize, out IntPtr hMessageBuffer);
+            byte* messageBuffer = (byte*)hMessageBuffer;
+            Unsafe.CopyBlock(messageBuffer, memory, (uint)size);
+            // append padding
+            messageBuffer[contentLength] = 0x80;
+            return Compute(hMessageBuffer, allocatedSize, contentLength, blockCount);
+        }
+
+        // This is what can only be called "optimized garbage" ... but it's more than twice as fast.
+        private unsafe IntPtr Compute(IntPtr hMessageBuffer, int allocatedSize, int contentLength, int blockCount)
+        {
+            byte[] allocatedSizeZeros = new byte[allocatedSize];
             IntPtr hBuffer = Marshal.AllocHGlobal(allocatedSize);
             int* buffer = (int*)hBuffer;
             int bufferLength = allocatedSize / sizeof(int);
             Marshal.Copy(allocatedSizeZeros, 0, hBuffer, allocatedSize);
+            byte* messageBuffer = (byte*)hMessageBuffer;
             for (int i = 0; i < blockCount; i++)
             {
                 byte* pRow = messageBuffer + (i * 64);

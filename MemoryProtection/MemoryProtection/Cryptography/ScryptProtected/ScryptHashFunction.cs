@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MemoryProtection.MemoryProtection.Cryptography.Sha256Protected;
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -55,7 +56,7 @@ namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
             using (ProtectedMemoryAccess passwordAccess = new ProtectedMemoryAccess(password))
             using (ProtectedMemoryAccess saltAccess = new ProtectedMemoryAccess(salt))
             {
-                Pbkdf2Sha256((byte*)passwordAccess.Handle, password.ContentLength, (byte*)saltAccess.Handle, salt.ContentLength, 1, (int)blockSize * p, B[0]);
+                Pbkdf2HmacSha256((byte*)passwordAccess.Handle, password.ContentLength, (byte*)saltAccess.Handle, salt.ContentLength, 1, (int)blockSize * p, B[0]);
             }
             for (int i = 0; i < p; i++)
             {
@@ -65,7 +66,7 @@ namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
             byte* output = (byte*)hOutput;
             using (ProtectedMemoryAccess passwordAccess = new ProtectedMemoryAccess(password))
             {
-                Pbkdf2Sha256((byte*)passwordAccess.Handle, password.ContentLength, B[0], (int)blockSize * p, 1, outLength, output);
+                Pbkdf2HmacSha256((byte*)passwordAccess.Handle, password.ContentLength, B[0], (int)blockSize * p, 1, outLength, output);
             }
             return hOutput;
         }
@@ -76,9 +77,45 @@ namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
             Marshal.FreeHGlobal(hB);
         }
 
-        private unsafe void Pbkdf2Sha256(byte* passphrase, int passLength, byte* salt, int saltLength, int c, int dkLen, byte* output)
-        {
+        private const int digestLength = 0x20;
 
+        private unsafe void Pbkdf2HmacSha256(byte* passphrase, int passLength, byte* salt, int saltLength, int c, int dkLen, byte* result)
+        {
+            for (int i = 0; i < dkLen / digestLength; i++)
+            {
+                if (c < 1)
+                {
+                    throw new ArgumentException("The count " + nameof(c) + " cannot be less than 1!");
+                }
+                int messageLength = saltLength + sizeof(int);
+                IntPtr hMessage = Marshal.AllocHGlobal(messageLength);
+                byte* message = (byte*)hMessage;
+                Unsafe.CopyBlock(message, salt, (uint)saltLength);
+                MarshalExtensions.WriteInt32BigEndian(message + saltLength, i);
+                Sha256ProtectedCryptoProvider sha256 = new Sha256ProtectedCryptoProvider();
+                (IntPtr hU1, _) = sha256.ComputeHmacUnsafe(passphrase, passLength, message, messageLength);
+                Unsafe.CopyBlock(result + (i * digestLength), (void*)hU1, digestLength);
+                MarshalExtensions.ZeroFree(hMessage, messageLength);
+                MarshalExtensions.ZeroFree(hU1, digestLength);
+                if (c > 1)
+                {
+                    hMessage = Marshal.AllocHGlobal(digestLength);
+                    message = (byte*)hMessage;
+                    Unsafe.CopyBlock(message, result + (i * digestLength), digestLength);
+                    for (int j = 2; j <= c; j++)
+                    {
+                        (IntPtr hUi, _) = sha256.ComputeHmacUnsafe(passphrase, passLength, message, digestLength);
+                        byte* ui = (byte*)hUi;
+                        for (int k = 0; k < digestLength; k++)
+                        {
+                            (result + (i * digestLength))[k] ^= ui[k];
+                        }
+                        Unsafe.CopyBlock(message, ui, digestLength);
+                        MarshalExtensions.ZeroFree(hUi, digestLength);
+                    }
+                    MarshalExtensions.ZeroFree(hMessage, digestLength);
+                }
+            }
         }
 
         private unsafe void ROMix(byte* block, int iterations)

@@ -15,6 +15,12 @@ namespace MemoryProtection
             Marshal.Copy(zeros, 0, handle, size);
         }
 
+        internal static void ZeroFree(IntPtr handle, int size)
+        {
+            ZeroMemory(handle, size);
+            Marshal.FreeHGlobal(handle);
+        }
+
         internal static void Copy(IntPtr source, int sourceOffset, IntPtr destination, int destinationOffset, int length)
         {
             IntPtr s = source + sourceOffset;
@@ -75,6 +81,14 @@ namespace MemoryProtection
             bytes[2] = (byte)(val >> 8);
             bytes[3] = (byte)val;
             Marshal.Copy(bytes, 0, ptr, 4);
+        }
+
+        internal static unsafe void WriteInt32BigEndian(byte* buffer, int val)
+        {
+            buffer[0] = (byte)(val >> 24);
+            buffer[1] = (byte)(val >> 16);
+            buffer[2] = (byte)(val >> 8);
+            buffer[3] = (byte)val;
         }
 
         internal static int ReadInt32BigEndian(IntPtr ptr)
