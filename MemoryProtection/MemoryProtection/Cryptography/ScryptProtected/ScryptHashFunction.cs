@@ -11,6 +11,8 @@ namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
 {
     internal struct ScryptHashFunction
     {
+        private static readonly byte[] zeros64 = new byte[64];
+        private byte[] blockSizeZeros;
         private int n;
         private int p;
         private int outLength;
@@ -37,6 +39,7 @@ namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
             p = parallelizationFactor;
             outLength = desiredKeyLength;
             blockSize = (uint)(128 * blockSizeFactor);
+            blockSizeZeros = new byte[(int)blockSize];
             allocatedSize = p * (sizeof(byte*) + (int)blockSize);
 
             hB = Marshal.AllocHGlobal(allocatedSize);
@@ -200,9 +203,13 @@ namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
                 Salsa208(x);
                 Unsafe.CopyBlock(block + (i * 32) + (r * 64), x, 64u);
             }
-            MarshalExtensions.ZeroFree(hX, 64);
-            MarshalExtensions.ZeroFree(hBuffer, blockSize);
+            Marshal.Copy(zeros64, 0, hX, 64);
+            Marshal.FreeHGlobal(hX);
+            Marshal.Copy(blockSizeZeros, 0, hBuffer, (int)blockSize);
+            Marshal.FreeHGlobal(hBuffer);
         }
+
+
 
         private unsafe void Salsa208(byte* buffer)
         {
@@ -213,34 +220,46 @@ namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
             for (int i = 0; i < 4; i++)
             {
                 // Odd round
-                QR(x + 0,  x + 4,  x + 8,  x + 12); // column 1
-                QR(x + 5, x + 9, x + 13, x + 1);    // column 2
-                QR(x + 10, x + 14, x + 2,  x + 6);  // column 3
-                QR(x + 15, x + 3,  x + 7,  x + 11); // column 4
+                *(x + 4) ^= (*(x + 0) + *(x + 12) << 7) | (*(x + 0) + *(x + 12) >> (32 - 7));
+                *(x + 8) ^= (*(x + 4) + *(x + 0) << 9) | (*(x + 4) + *(x + 0) >> (32 - 9));
+                *(x + 12) ^= (*(x + 8) + *(x + 4) << 13) | (*(x + 8) + *(x + 4) >> (32 - 13));
+                *(x + 0) ^= (*(x + 12) + *(x + 8) << 18) | (*(x + 12) + *(x + 8) >> (32 - 18)); // column 1
+                *(x + 9) ^= (*(x + 5) + *(x + 1) << 7) | (*(x + 5) + *(x + 1) >> (32 - 7));
+                *(x + 13) ^= (*(x + 9) + *(x + 5) << 9) | (*(x + 9) + *(x + 5) >> (32 - 9));
+                *(x + 1) ^= (*(x + 13) + *(x + 9) << 13) | (*(x + 13) + *(x + 9) >> (32 - 13));
+                *(x + 5) ^= (*(x + 1) + *(x + 13) << 18) | (*(x + 1) + *(x + 13) >> (32 - 18));    // column 2
+                *(x + 14) ^= (*(x + 10) + *(x + 6) << 7) | (*(x + 10) + *(x + 6) >> (32 - 7));
+                *(x + 2) ^= (*(x + 14) + *(x + 10) << 9) | (*(x + 14) + *(x + 10) >> (32 - 9));
+                *(x + 6) ^= (*(x + 2) + *(x + 14) << 13) | (*(x + 2) + *(x + 14) >> (32 - 13));
+                *(x + 10) ^= (*(x + 6) + *(x + 2) << 18) | (*(x + 6) + *(x + 2) >> (32 - 18));  // column 3
+                *(x + 3) ^= (*(x + 15) + *(x + 11) << 7) | (*(x + 15) + *(x + 11) >> (32 - 7));
+                *(x + 7) ^= (*(x + 3) + *(x + 15) << 9) | (*(x + 3) + *(x + 15) >> (32 - 9));
+                *(x + 11) ^= (*(x + 7) + *(x + 3) << 13) | (*(x + 7) + *(x + 3) >> (32 - 13));
+                *(x + 15) ^= (*(x + 11) + *(x + 7) << 18) | (*(x + 11) + *(x + 7) >> (32 - 18)); // column 4
                 // Even round
-                QR(x + 0,  x + 1,  x + 2,  x + 3);  // row 1
-                QR(x + 5,  x + 6,  x + 7,  x + 4);  // row 2
-                QR(x + 10, x + 11, x + 8,  x + 9);  // row 3
-                QR(x + 15, x + 12, x + 13, x + 14);	// row 4
+                *(x + 1) ^= (*(x + 0) + *(x + 3) << 7) | (*(x + 0) + *(x + 3) >> (32 - 7));
+                *(x + 2) ^= (*(x + 1) + *(x + 0) << 9) | (*(x + 1) + *(x + 0) >> (32 - 9));
+                *(x + 3) ^= (*(x + 2) + *(x + 1) << 13) | (*(x + 2) + *(x + 1) >> (32 - 13));
+                *(x + 0) ^= (*(x + 3) + *(x + 2) << 18) | (*(x + 3) + *(x + 2) >> (32 - 18));  // row 1
+                *(x + 6) ^= (*(x + 5) + *(x + 4) << 7) | (*(x + 5) + *(x + 4) >> (32 - 7));
+                *(x + 7) ^= (*(x + 6) + *(x + 5) << 9) | (*(x + 6) + *(x + 5) >> (32 - 9));
+                *(x + 4) ^= (*(x + 7) + *(x + 6) << 13) | (*(x + 7) + *(x + 6) >> (32 - 13));
+                *(x + 5) ^= (*(x + 4) + *(x + 7) << 18) | (*(x + 4) + *(x + 7) >> (32 - 18));  // row 2
+                *(x + 11) ^= (*(x + 10) + *(x + 9) << 7) | (*(x + 10) + *(x + 9) >> (32 - 7));
+                *(x + 8) ^= (*(x + 11) + *(x + 10) << 9) | (*(x + 11) + *(x + 10) >> (32 - 9));
+                *(x + 9) ^= (*(x + 8) + *(x + 11) << 13) | (*(x + 8) + *(x + 11) >> (32 - 13));
+                *(x + 10) ^= (*(x + 9) + *(x + 8) << 18) | (*(x + 9) + *(x + 8) >> (32 - 18));  // row 3
+                *(x + 12) ^= (*(x + 15) + *(x + 14) << 7) | (*(x + 15) + *(x + 14) >> (32 - 7));
+                *(x + 13) ^= (*(x + 12) + *(x + 15) << 9) | (*(x + 12) + *(x + 15) >> (32 - 9));
+                *(x + 14) ^= (*(x + 13) + *(x + 12) << 13) | (*(x + 13) + *(x + 12) >> (32 - 13));
+                *(x + 15) ^= (*(x + 14) + *(x + 13) << 18) | (*(x + 14) + *(x + 13) >> (32 - 18));	// row 4
             }
             for (int i = 0; i < 16; i++)
             {
                 ((uint*)buffer)[i] += x[i];
             }
-            MarshalExtensions.ZeroFree(hX, 64);
-        }
-
-        private unsafe uint ROTL(uint a, int b)
-        {
-            return (a << b) | (a >> (32 - b));
-        }
-
-        private unsafe void QR(uint* a, uint* b, uint* c, uint* d)
-        {
-            *b ^= ROTL(*a + *d, 7);
-	        *c ^= ROTL(*b + *a, 9);
-	        *d ^= ROTL(*c + *b, 13);
-            *a ^= ROTL(*d + *c, 18);
+            Marshal.Copy(zeros64, 0, hX, 64);
+            Marshal.FreeHGlobal(hX);
         }
     }
 }
