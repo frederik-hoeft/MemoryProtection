@@ -1,9 +1,11 @@
 ﻿using Blake2Fast;
 using MemoryProtection.MemoryProtection;
 using MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected;
+using MemoryProtection.MemoryProtection.Cryptography.ScryptProtected;
 using MemoryProtection.MemoryProtection.Cryptography.Sha256Protected;
 using MemoryProtection.MemoryProtection.ProtectedString;
 using MemoryProtection.MemoryProtection.Win32;
+using Scrypt;
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -16,7 +18,56 @@ namespace MemoryProtection
         private static void Main(string[] args)
         {
             // Call whatever test method you want.
-            Sha256Tests();
+            ScryptPerfTest();
+        }
+
+        private static unsafe void TestPBKDF2()
+        {
+            byte[] password = Encoding.UTF8.GetBytes("ABCD");
+            byte[] salt = Convert.FromBase64String("TB5ny6LI9KywU3+TD5FdrNSsxYV2T+3qyxRwMieu7zQ=");
+            byte[] result = new byte[8 * 128];
+            fixed (byte* p = password)
+            fixed (byte* s = salt)
+            fixed (byte* r = result)
+            {
+                ScryptHashFunction.Pbkdf2HmacSha256(p, password.Length, s, salt.Length, 1, 128 * 8, r);
+            }
+            PrintArray(result);
+        }
+
+        private static void ScryptPerfTest()
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes("Lorem ipsum dolor sit amet, consectetur adipiscing elit.");
+            using ProtectedMemory protectedMemory = ProtectedMemory.Allocate(bytes.Length);
+            protectedMemory.Write(bytes, 0);
+            ScryptProtectedCryptoProvider scryptProtected = new ScryptProtectedCryptoProvider();
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            for (int i = 0; i < 20; i++)
+            {
+                _ = scryptProtected.ComputeHash(protectedMemory);
+            }
+            stopwatch.Stop();
+            Console.WriteLine("20 hashes done in " + stopwatch.Elapsed.ToString());
+            double t = stopwatch.ElapsedMilliseconds / 20d;
+            Console.WriteLine(" * " + t.ToString() + " ms per digest.");
+            Console.WriteLine(" * " + (1000d / t).ToString() + " hashes per second.");
+        }
+
+        private static void ScryptTests()
+        {
+            // Iterations:  65536
+            // blockSize:   8
+            // Threads:     1
+            // SALT: TB5ny6LI9KywU3+TD5FdrNSsxYV2T+3qyxRwMieu7zQ=
+            // HASH: +jsi778vVLkfYWp3dQDwW7g9/XMySal9lDoEQxvB6uc=
+
+            // ScryptEncoder scrypt = new ScryptEncoder(65536, 8, 1);
+            // Console.WriteLine(scrypt.Encode("ABCD"));
+            byte[] bytes = Encoding.UTF8.GetBytes("ABCD");
+            ProtectedMemory protectedMemory = ProtectedMemory.Allocate(bytes.Length);
+            protectedMemory.Write(bytes, 0);
+
         }
 
         private static void Blake2PerfTest()
@@ -49,6 +100,22 @@ namespace MemoryProtection
 
             byte[] hashedBytes = Blake2b.ComputeHash(32, Encoding.UTF8.GetBytes(input));
             Console.WriteLine(Blake2bProtectedCryptoProvider.ByteArrayToString(hashedBytes));
+        }
+
+        private static unsafe void Sha256HmacTests2()
+        {
+            byte[] key = Encoding.UTF8.GetBytes("ABCD");
+            IntPtr hMessage = Marshal.AllocHGlobal(32 + sizeof(int));
+            byte[] message = new byte[] { 0x4c, 0x1e, 0x67, 0xcb, 0xa2, 0xc8, 0xf4, 0xac, 0xb0, 0x53, 0x7f, 0x93, 0xf, 0x91, 0x5d, 0xac, 0xd4, 0xac, 0xc5, 0x85, 0x76, 0x4f, 0xed, 0xea, 0xcb, 0x14, 0x70, 0x32, 0x27, 0xae, 0xef, 0x34, 0x0, 0x0, 0x0, 0x0 };
+            Marshal.Copy(message, 0, hMessage, message.Length);
+            fixed (byte* pKey = key)
+            {
+                byte* pMessage = (byte*)hMessage;
+                Sha256ProtectedCryptoProvider sha256 = new Sha256ProtectedCryptoProvider();
+                (IntPtr h, int l) = sha256.ComputeHmacUnsafe(pKey, 4, pMessage, 32 + sizeof(int));
+                Marshal.FreeHGlobal(h);
+            }
+            Marshal.FreeHGlobal(hMessage);
         }
 
         private static void Sha256HmacTests()
@@ -246,15 +313,27 @@ namespace MemoryProtection
         {
             for (int i = 0; i < arr.Length; i++)
             {
-                Console.Write(arr[i].ToString() + " ");
+                Console.Write("0x" + arr[i].ToString("x") + " ");
             }
             Console.WriteLine("");
         }
 
-        internal static void PrintArray(IntPtr ptr, int size)
+        internal static unsafe void PrintArray(IntPtr ptr, int size)
         {
-            byte[] bytes = new byte[size];
-            Marshal.Copy(ptr, bytes, 0, size);
+            PrintArray((byte*)ptr, size);
+        }
+
+        internal static unsafe void PrintArray(byte* bytes, int size)
+        {
+            for (int i = 0; i < size; i++)
+            {
+                Console.Write("0x" + bytes[i].ToString("x") + " ");
+            }
+            Console.WriteLine("");
+        }
+
+        internal static unsafe void PrintArray(byte* bytes, uint size)
+        {
             for (int i = 0; i < size; i++)
             {
                 Console.Write("0x" + bytes[i].ToString("x") + " ");

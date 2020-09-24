@@ -15,6 +15,11 @@ namespace MemoryProtection
             Marshal.Copy(zeros, 0, handle, size);
         }
 
+        internal static void ZeroFree(IntPtr handle, uint size)
+        {
+            ZeroFree(handle, (int)size);
+        }
+
         internal static void ZeroFree(IntPtr handle, int size)
         {
             ZeroMemory(handle, size);

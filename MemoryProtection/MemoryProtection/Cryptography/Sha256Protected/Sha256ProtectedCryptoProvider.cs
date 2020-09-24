@@ -41,6 +41,7 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
                 return ComputeHmacUnsafe((byte*)reducedKey, digestLength, message, messageLength, freeKey = true);
             }
             IntPtr hPaddedKey = Marshal.AllocHGlobal(blockSize);
+            MarshalExtensions.ZeroMemory(hPaddedKey, blockSize);
             Unsafe.CopyBlock((byte*)hPaddedKey, key, (uint)keyLength);
             if (freeKey)
             {

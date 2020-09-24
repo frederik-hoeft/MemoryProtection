@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <None Remove="MemoryProtection\Cryptography\ProtectedAesProvider.cs~RF17410b9.TMP" />
+    <None Remove="MemoryProtection\Cryptography\ScryptProtected\ScryptHashFunction.cs~RF1571a3a.TMP" />
+    <None Remove="MemoryProtection\Cryptography\ScryptProtected\ScryptHashFunction.cs~RF2152ea8.TMP" />
     <None Remove="MemoryProtection\Cryptography\ScryptProtected\ScryptHashFunction.cs~RF82207d.TMP" />
     <None Remove="MemoryProtection\Cryptography\Sha256ProtectedCryptoProvider.cs~RF1760f62.TMP" />
     <None Remove="MemoryProtection\ProtectedMemory.cs~RFf28d07.TMP" />
@@ -31,6 +33,7 @@
 
   <ItemGroup>
     <PackageReference Include="SauceControl.Blake2Fast" Version="2.0.0" />
+    <PackageReference Include="Scrypt.NET" Version="1.3.0" />
   </ItemGroup>
 
 </Project>
