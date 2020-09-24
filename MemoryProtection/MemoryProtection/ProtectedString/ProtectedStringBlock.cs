@@ -64,7 +64,7 @@ namespace MemoryProtection.MemoryProtection.ProtectedString
 
         public void Dispose()
         {
-            protectedMemory.Free();
+            protectedMemory.Dispose();
         }
 
         public bool Equals(IProtectedString other)

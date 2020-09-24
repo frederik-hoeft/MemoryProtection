@@ -67,12 +67,14 @@ namespace MemoryProtection.MemoryProtection.ProtectedString
         public void Dispose()
         {
             ProtectedStringNode node = head;
+            head = null;
             while (node != null)
             {
                 ProtectedStringNode toFree = node;
                 node = node.Next;
                 toFree.Dispose();
             }
+            tail = null;
         }
 
         public bool Equals(IProtectedString other)

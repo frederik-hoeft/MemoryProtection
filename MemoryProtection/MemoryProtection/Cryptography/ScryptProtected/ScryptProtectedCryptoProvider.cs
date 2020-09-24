@@ -19,15 +19,19 @@ namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
             hashFunction.Free();
             byte[] hash = new byte[32];
             Marshal.Copy(hHash, hash, 0, 32);
-            // Console.WriteLine(Convert.ToBase64String(hash));
-            Marshal.FreeHGlobal(hHash);
-            return IntPtr.Zero;
+            return hHash;
         }
 
         public string ComputeHash(ProtectedMemory protectedMemory)
         {
-            _ = Digest(protectedMemory, 32);
-            return null;
+            IntPtr hash = Digest(protectedMemory, 32);
+            byte[] resultBytes = new byte[32];
+            Marshal.Copy(hash, resultBytes, 0, 32);
+            string result = Convert.ToBase64String(resultBytes);
+            byte[] zeros = new byte[32];
+            Marshal.Copy(zeros, 0, hash, 32);
+            Marshal.FreeHGlobal(hash);
+            return result;
         }
 
         public string ComputeHash(IProtectedString protectedString)
@@ -43,6 +47,20 @@ namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
         public ProtectedMemory ComputeHashProtected(IProtectedString protectedString)
         {
             throw new NotImplementedException();
+        }
+
+        public static string ByteArrayToString(byte[] bytes)
+        {
+            StringBuilder stringBuilder = new StringBuilder(bytes.Length * 2);
+            char[] hexAlphabet = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                stringBuilder.Append(hexAlphabet[bytes[i] >> 4]);
+                stringBuilder.Append(hexAlphabet[bytes[i] & 0xF]);
+            }
+
+            return stringBuilder.ToString();
         }
     }
 }

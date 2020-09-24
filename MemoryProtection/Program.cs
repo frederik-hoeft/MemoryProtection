@@ -18,7 +18,7 @@ namespace MemoryProtection
         private static void Main(string[] args)
         {
             // Call whatever test method you want.
-            ScryptPerfTest();
+            ScryptTests();
         }
 
         private static unsafe void TestPBKDF2()
@@ -33,6 +33,22 @@ namespace MemoryProtection
                 ScryptHashFunction.Pbkdf2HmacSha256(p, password.Length, s, salt.Length, 1, 128 * 8, r);
             }
             PrintArray(result);
+        }
+
+        private static void DefaultScryptPerfTest()
+        {
+            ScryptEncoder scrypt = new ScryptEncoder(65536, 8, 1);
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            for (int i = 0; i < 20; i++)
+            {
+                _ = scrypt.Encode("Lorem ipsum dolor sit amet, consectetur adipiscing elit." + i);
+            }
+            stopwatch.Stop();
+            Console.WriteLine("20 hashes done in " + stopwatch.Elapsed.ToString());
+            double t = stopwatch.ElapsedMilliseconds / 20d;
+            Console.WriteLine(" * " + t.ToString() + " ms per digest.");
+            Console.WriteLine(" * " + (1000d / t).ToString() + " hashes per second.");
         }
 
         private static void ScryptPerfTest()
@@ -67,7 +83,8 @@ namespace MemoryProtection
             byte[] bytes = Encoding.UTF8.GetBytes("ABCD");
             ProtectedMemory protectedMemory = ProtectedMemory.Allocate(bytes.Length);
             protectedMemory.Write(bytes, 0);
-
+            ScryptProtectedCryptoProvider scryptProtected = new ScryptProtectedCryptoProvider();
+            Console.WriteLine(scryptProtected.ComputeHash(protectedMemory));
         }
 
         private static void Blake2PerfTest()
