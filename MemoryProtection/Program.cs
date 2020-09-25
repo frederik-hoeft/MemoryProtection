@@ -18,7 +18,7 @@ namespace MemoryProtection
         private static void Main(string[] args)
         {
             // Call whatever test method you want.
-            ScryptTests();
+            ScryptPerfTest();
         }
 
         private static unsafe void TestPBKDF2()

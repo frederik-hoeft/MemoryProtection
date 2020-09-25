@@ -23,6 +23,7 @@
     <None Remove="MemoryProtection\Cryptography\ProtectedAesProvider.cs~RF17410b9.TMP" />
     <None Remove="MemoryProtection\Cryptography\ScryptProtected\ScryptHashFunction.cs~RF1571a3a.TMP" />
     <None Remove="MemoryProtection\Cryptography\ScryptProtected\ScryptHashFunction.cs~RF2152ea8.TMP" />
+    <None Remove="MemoryProtection\Cryptography\ScryptProtected\ScryptHashFunction.cs~RF2b6de89.TMP" />
     <None Remove="MemoryProtection\Cryptography\ScryptProtected\ScryptHashFunction.cs~RF82207d.TMP" />
     <None Remove="MemoryProtection\Cryptography\Sha256ProtectedCryptoProvider.cs~RF1760f62.TMP" />
     <None Remove="MemoryProtection\ProtectedMemory.cs~RFf28d07.TMP" />
