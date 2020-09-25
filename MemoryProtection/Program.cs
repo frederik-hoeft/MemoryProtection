@@ -1,11 +1,9 @@
-﻿using Blake2Fast;
-using MemoryProtection.MemoryProtection;
+﻿using MemoryProtection.MemoryProtection;
 using MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected;
 using MemoryProtection.MemoryProtection.Cryptography.ScryptProtected;
 using MemoryProtection.MemoryProtection.Cryptography.Sha256Protected;
 using MemoryProtection.MemoryProtection.ProtectedString;
 using MemoryProtection.MemoryProtection.Win32;
-using Scrypt;
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -19,36 +17,6 @@ namespace MemoryProtection
         {
             // Call whatever test method you want.
             ScryptPerfTest();
-        }
-
-        private static unsafe void TestPBKDF2()
-        {
-            byte[] password = Encoding.UTF8.GetBytes("ABCD");
-            byte[] salt = Convert.FromBase64String("TB5ny6LI9KywU3+TD5FdrNSsxYV2T+3qyxRwMieu7zQ=");
-            byte[] result = new byte[8 * 128];
-            fixed (byte* p = password)
-            fixed (byte* s = salt)
-            fixed (byte* r = result)
-            {
-                ScryptHashFunction.Pbkdf2HmacSha256(p, password.Length, s, salt.Length, 1, 128 * 8, r);
-            }
-            PrintArray(result);
-        }
-
-        private static void DefaultScryptPerfTest()
-        {
-            ScryptEncoder scrypt = new ScryptEncoder(65536, 8, 1);
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
-            for (int i = 0; i < 20; i++)
-            {
-                _ = scrypt.Encode("Lorem ipsum dolor sit amet, consectetur adipiscing elit." + i);
-            }
-            stopwatch.Stop();
-            Console.WriteLine("20 hashes done in " + stopwatch.Elapsed.ToString());
-            double t = stopwatch.ElapsedMilliseconds / 20d;
-            Console.WriteLine(" * " + t.ToString() + " ms per digest.");
-            Console.WriteLine(" * " + (1000d / t).ToString() + " hashes per second.");
         }
 
         private static void ScryptPerfTest()
@@ -78,13 +46,21 @@ namespace MemoryProtection
             // SALT: TB5ny6LI9KywU3+TD5FdrNSsxYV2T+3qyxRwMieu7zQ=
             // HASH: +jsi778vVLkfYWp3dQDwW7g9/XMySal9lDoEQxvB6uc=
 
-            // ScryptEncoder scrypt = new ScryptEncoder(65536, 8, 1);
-            // Console.WriteLine(scrypt.Encode("ABCD"));
             byte[] bytes = Encoding.UTF8.GetBytes("ABCD");
             ProtectedMemory protectedMemory = ProtectedMemory.Allocate(bytes.Length);
             protectedMemory.Write(bytes, 0);
+            // ScryptProtectedCryptoProvider scryptProtected2 = new ScryptProtectedCryptoProvider();
+            // Console.WriteLine(scryptProtected2.ComputeHash(protectedMemory, Convert.FromBase64String("TB5ny6LI9KywU3+TD5FdrNSsxYV2T+3qyxRwMieu7zQ="), 65536, 8, 1, 32));
+            byte[] bytes2 = Encoding.UTF8.GetBytes("DCBA");
+            ProtectedMemory protectedMemory2 = ProtectedMemory.Allocate(bytes.Length);
+            protectedMemory2.Write(bytes2, 0);
             ScryptProtectedCryptoProvider scryptProtected = new ScryptProtectedCryptoProvider();
-            Console.WriteLine(scryptProtected.ComputeHash(protectedMemory));
+            string result = scryptProtected.ComputeHash(protectedMemory);
+            Console.WriteLine(result);
+            Console.WriteLine("Should be False:");
+            Console.WriteLine(scryptProtected.Compare(protectedMemory2, result));
+            Console.WriteLine("Should be True:");
+            Console.WriteLine(scryptProtected.Compare(protectedMemory, result));
         }
 
         private static void Blake2PerfTest()
@@ -114,9 +90,6 @@ namespace MemoryProtection
             protectedMemory.Write(bytes, 0);
             Blake2bProtectedCryptoProvider blake2 = new Blake2bProtectedCryptoProvider();
             Console.WriteLine(blake2.ComputeHash(protectedMemory));
-
-            byte[] hashedBytes = Blake2b.ComputeHash(32, Encoding.UTF8.GetBytes(input));
-            Console.WriteLine(Blake2bProtectedCryptoProvider.ByteArrayToString(hashedBytes));
         }
 
         private static unsafe void Sha256HmacTests2()

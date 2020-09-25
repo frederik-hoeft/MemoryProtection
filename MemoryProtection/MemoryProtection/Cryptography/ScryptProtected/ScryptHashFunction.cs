@@ -9,15 +9,15 @@ using System.Text;
 
 namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
 {
-    internal struct ScryptHashFunction
+    internal class ScryptHashFunction : IDisposable
     {
         private static readonly byte[] zeros64 = new byte[64];
-        private byte[] blockSizeZeros;
-        private int n;
-        private int r;
-        private int p;
-        private int outLength;
-        private uint blockSize;
+        private readonly byte[] blockSizeZeros;
+        private readonly int n;
+        private readonly int r;
+        private readonly int p;
+        private readonly int outLength;
+        private readonly uint blockSize;
         /*
          *                 +------------------------------+
          *                 |                              |
@@ -26,11 +26,11 @@ namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
          *        |        |          v                   v
          * B --> byte*   byte* .... <data> * 128 * r... <data> * 128 * r ...
          */
-        private IntPtr hB;          // Handle for B
-        private unsafe byte** B;    // 2d byte array!
+        private readonly IntPtr hB;          // Handle for B
+        private readonly unsafe byte** B;    // 2d byte array!
+        private readonly int allocatedSize;
 
-        private int allocatedSize;
-        internal unsafe void Init(int costFactor, int blockSizeFactor, int parallelizationFactor, int desiredKeyLength)
+        internal unsafe ScryptHashFunction(int costFactor, int blockSizeFactor, int parallelizationFactor, int desiredKeyLength)
         {
             if (desiredKeyLength < 1)
             {
@@ -54,16 +54,15 @@ namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
             }
         }
 
-        internal unsafe IntPtr Digest(ProtectedMemory password, ProtectedMemory salt)
+        internal unsafe IntPtr Digest(ProtectedMemory password, byte[] salt)
         {
             if (outLength == 0)
             {
                 throw new InvalidOperationException("Hash not initialized.");
             }
-            using (ProtectedMemoryAccess passwordAccess = new ProtectedMemoryAccess(password))
-            using (ProtectedMemoryAccess saltAccess = new ProtectedMemoryAccess(salt))
+            fixed (byte* pSalt = salt)
             {
-                Pbkdf2HmacSha256((byte*)passwordAccess.Handle, password.ContentLength, (byte*)saltAccess.Handle, salt.ContentLength, 1, (int)blockSize * p, B[0]);
+                Pbkdf2HmacSha256(password, pSalt, salt.Length, 1, (int)blockSize * p, B[0]);
             }
             int iBlockSize = (int)blockSize;
             int vLength = n * iBlockSize;
@@ -137,7 +136,6 @@ namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
                     Unsafe.CopyBlock(tempBuffer, source, 64u);
                     BlockMix(B[i], buffer, tempBuffer);
                 }
-
             }
             Marshal.Copy(blockSizeZeros, 0, hBuffer, iBlockSize);
             Marshal.FreeHGlobal(hBuffer);
@@ -146,21 +144,11 @@ namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
             MarshalExtensions.ZeroFree(hV, vLength);
             IntPtr hOutput = Marshal.AllocHGlobal(outLength);
             byte* output = (byte*)hOutput;
-            using (ProtectedMemoryAccess passwordAccess = new ProtectedMemoryAccess(password))
-            {
-                Pbkdf2HmacSha256((byte*)passwordAccess.Handle, password.ContentLength, B[0], (int)blockSize * p, 1, outLength, output);
-            }
+            Pbkdf2HmacSha256(password, B[0], (int)blockSize * p, 1, outLength, output);
             return hOutput;
         }
 
-        internal unsafe void Free()
-        {
-            MarshalExtensions.ZeroMemory(hB, allocatedSize);
-            Marshal.FreeHGlobal(hB);
-        }
-
-        // TODO: use ProtectedMemory as argument to ensure minimal exposure of passphrase to unprotected memory.
-        public static unsafe void Pbkdf2HmacSha256(byte* passphrase, int passLength, byte* salt, int saltLength, long c, int dkLen, byte* result)
+        private static unsafe void Pbkdf2HmacSha256(ProtectedMemory password, byte* salt, int saltLength, long c, int dkLen, byte* result)
         {
             if (c < 1)
             {
@@ -177,13 +165,13 @@ namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
             {
                 MarshalExtensions.WriteInt32BigEndian(saltBuffer + saltLength, i);
                 Sha256ProtectedCryptoProvider sha256 = new Sha256ProtectedCryptoProvider();
-                (IntPtr hU, _) = sha256.ComputeHmacUnsafe(passphrase, passLength, saltBuffer, saltBufferLength);
+                (IntPtr hU, _) = sha256.ComputeHmacUnsafe(password, saltBuffer, saltBufferLength);
                 Unsafe.CopyBlock(result + ((i - 1) * digestLength), (void*)hU, digestLength);
                 MarshalExtensions.ZeroFree(hU, digestLength);
 
                 for (long j = 1; j < c; j++)
                 {
-                    (IntPtr hUi, _) = sha256.ComputeHmacUnsafe(passphrase, passLength, saltBuffer, digestLength);
+                    (IntPtr hUi, _) = sha256.ComputeHmacUnsafe(password, saltBuffer, digestLength);
                     byte* ui = (byte*)hUi;
                     for (int k = 0; k < digestLength; k++)
                     {
@@ -445,6 +433,12 @@ namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
                 result[14] = y[14] += x14;
                 result[15] = y[15] += x15;
             }
+        }
+
+        public void Dispose()
+        {
+            MarshalExtensions.ZeroMemory(hB, allocatedSize);
+            Marshal.FreeHGlobal(hB);
         }
     }
 }

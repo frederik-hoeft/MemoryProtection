@@ -7,7 +7,7 @@ using System.Text;
 
 namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
 {
-    public class Sha256ProtectedCryptoProvider : IProtectedHashFunction
+    public class Sha256ProtectedCryptoProvider : ProtectedHashFunction
     {
         private static readonly uint[] K = new uint[] {
             0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -82,6 +82,48 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
             return (hResult, resultLength);
         }
 
+        public unsafe (IntPtr, int) ComputeHmacUnsafe(ProtectedMemory key, byte* message, int messageLength)
+        {
+            if (key.ContentLength > blockSize)
+            {
+                using ProtectedMemory reducedKey = ComputeHashProtected(key);
+                return ComputeHmacUnsafe(reducedKey, message, messageLength);
+            }
+            using ProtectedMemory paddedKey = ProtectedMemory.Allocate(blockSize);
+            key.CopyTo(0, paddedKey, 0, key.ContentLength);
+            using ProtectedMemory outerKeyPadded = ProtectedMemory.Allocate(blockSize);
+            using ProtectedMemory innerKeyPadded = ProtectedMemory.Allocate(blockSize);
+            paddedKey.CopyTo(0, outerKeyPadded, 0, blockSize);
+            paddedKey.CopyTo(0, innerKeyPadded, 0, blockSize);
+            using (ProtectedMemoryAccess outerKeyAccess = new ProtectedMemoryAccess(outerKeyPadded))
+            {
+                byte* outerKeyData = (byte*)outerKeyAccess.Handle;
+                for (int i = 0; i < blockSize; i++)
+                {
+                    outerKeyData[i] ^= 0x5c;
+                }
+            }
+            using (ProtectedMemoryAccess innerKeyAccess = new ProtectedMemoryAccess(innerKeyPadded))
+            {
+                byte* innerKeyData = (byte*)innerKeyAccess.Handle;
+                for (int i = 0; i < blockSize; i++)
+                {
+                    innerKeyData[i] ^= 0x36;
+                }
+            }
+            using ProtectedMemory innerInput = ProtectedMemory.Allocate(blockSize + messageLength);
+            innerKeyPadded.CopyTo(0, innerInput, 0, blockSize);
+            using (ProtectedMemoryAccess innerAccess = new ProtectedMemoryAccess(innerInput))
+            {
+                Unsafe.CopyBlock((byte*)innerAccess.Handle + blockSize, message, (uint)messageLength);
+            }
+            using ProtectedMemory innerHash = ComputeHashProtected(innerInput);
+            using ProtectedMemory input = ProtectedMemory.Allocate(blockSize + digestLength);
+            outerKeyPadded.CopyTo(0, input, 0, blockSize);
+            innerHash.CopyTo(0, input, blockSize, digestLength);
+            return (Digest(input), digestLength);
+        }
+
         public unsafe ProtectedMemory ComputeHmacProtected(ProtectedMemory key, ProtectedMemory message)
         {
             if (key.ContentLength > blockSize)
@@ -135,7 +177,7 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
             return (Digest(memory, size), digestLength);
         }
 
-        public unsafe ProtectedMemory ComputeHashProtected(ProtectedMemory protectedMemory)
+        public unsafe override ProtectedMemory ComputeHashProtected(ProtectedMemory protectedMemory)
         {
             IntPtr pHash = Digest(protectedMemory);
             ProtectedMemory result = ProtectedMemory.Allocate(digestLength);
@@ -154,13 +196,13 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
             return result;
         }
 
-        public ProtectedMemory ComputeHashProtected(IProtectedString protectedString)
+        public override ProtectedMemory ComputeHashProtected(IProtectedString protectedString)
         {
             using ProtectedMemory protectedMemory = protectedString.GetProtectedUtf8Bytes();
             return ComputeHashProtected(protectedMemory);
         }
 
-        public string ComputeHash(ProtectedMemory protectedMemory)
+        public override string ComputeHash(ProtectedMemory protectedMemory)
         {
             return ComputeHelper(Digest(protectedMemory));
         }
@@ -181,12 +223,11 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
             return result;
         }
 
-        public string ComputeHash(IProtectedString protectedString)
+        public override string ComputeHash(IProtectedString protectedString)
         {
             using ProtectedMemory protectedMemory = protectedString.GetProtectedUtf8Bytes();
             return ComputeHash(protectedMemory);
         }
-
 
         private void Init(int size, out int contentLength, out int blockCount, out int allocatedSize, out IntPtr hMessageBuffer)
         {
@@ -348,20 +389,6 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Sha256Protected
             Marshal.FreeHGlobal(hBuffer);
             // return pointer to computed hash (needs to be freed by caller).
             return hHash;
-        }
-
-        public static string ByteArrayToString(byte[] bytes)
-        {
-            StringBuilder stringBuilder = new StringBuilder(bytes.Length * 2);
-            char[] hexAlphabet = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                stringBuilder.Append(hexAlphabet[bytes[i] >> 4]);
-                stringBuilder.Append(hexAlphabet[bytes[i] & 0xF]);
-            }
-
-            return stringBuilder.ToString();
         }
     }
 }

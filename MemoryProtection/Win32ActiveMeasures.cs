@@ -69,7 +69,7 @@ namespace MemoryProtection
             IntPtr pBaseAddr = Process.GetCurrentProcess().MainModule.BaseAddress;
 
             // Change memory protection
-            bool success = VirtualProtect(pBaseAddr, 4096u, PAGE_READWRITE, out uint oldProtect);
+            bool success = VirtualProtect(pBaseAddr, 4096u, PAGE_READWRITE, out _);
 
             if (success)
             {

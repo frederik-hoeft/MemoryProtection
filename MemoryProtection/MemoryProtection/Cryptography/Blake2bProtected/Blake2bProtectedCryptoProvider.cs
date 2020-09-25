@@ -5,9 +5,9 @@ using System.Text;
 
 namespace MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected
 {
-    public class Blake2bProtectedCryptoProvider : IProtectedHashFunction
+    public class Blake2bProtectedCryptoProvider : ProtectedHashFunction
     {
-        public string ComputeHash(ProtectedMemory protectedMemory)
+        public override string ComputeHash(ProtectedMemory protectedMemory)
         {
             IntPtr hash = Digest(32, protectedMemory);
             byte[] resultBytes = new byte[32];
@@ -18,19 +18,19 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected
             return result;
         }
 
-        public string ComputeHash(IProtectedString protectedString)
+        public override string ComputeHash(IProtectedString protectedString)
         {
             using ProtectedMemory protectedMemory = protectedString.GetProtectedUtf8Bytes();
             return ComputeHash(protectedMemory);
         }
 
-        public ProtectedMemory ComputeHashProtected(IProtectedString protectedString)
+        public override ProtectedMemory ComputeHashProtected(IProtectedString protectedString)
         {
             using ProtectedMemory protectedMemory = protectedString.GetProtectedUtf8Bytes();
             return ComputeHashProtected(protectedMemory);
         }
 
-        public ProtectedMemory ComputeHashProtected(ProtectedMemory protectedMemory)
+        public override ProtectedMemory ComputeHashProtected(ProtectedMemory protectedMemory)
         {
             IntPtr pHash = Digest(32, protectedMemory);
             ProtectedMemory result = ProtectedMemory.Allocate(32);
@@ -60,20 +60,6 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected
             IntPtr hash = blake2.Finish();
             blake2.Free();
             return hash;
-        }
-
-        public static string ByteArrayToString(byte[] bytes)
-        {
-            StringBuilder stringBuilder = new StringBuilder(bytes.Length * 2);
-            char[] hexAlphabet = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                stringBuilder.Append(hexAlphabet[bytes[i] >> 4]);
-                stringBuilder.Append(hexAlphabet[bytes[i] & 0xF]);
-            }
-
-            return stringBuilder.ToString();
         }
     }
 }
