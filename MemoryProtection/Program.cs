@@ -1,4 +1,5 @@
 ﻿using MemoryProtection.MemoryProtection;
+using MemoryProtection.MemoryProtection.Cryptography.Aes256Protected;
 using MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected;
 using MemoryProtection.MemoryProtection.Cryptography.ScryptProtected;
 using MemoryProtection.MemoryProtection.Cryptography.Sha256Protected;
@@ -16,7 +17,53 @@ namespace MemoryProtection
         private static void Main(string[] args)
         {
             // Call whatever test method you want.
-            ScryptPerfTest();
+            AesTests();
+        }
+
+        private static void AesTests()
+        {
+            byte[] key = Encoding.UTF8.GetBytes("ABCD");
+            using ProtectedMemory protectedKey = ProtectedMemory.Allocate(key.Length);
+            protectedKey.Write(key, 0);
+            Sha256ProtectedCryptoProvider sha256 = new Sha256ProtectedCryptoProvider();
+            ProtectedMemory aesKey = sha256.ComputeHashProtected(protectedKey);
+            AesState aesState = new AesState(aesKey, new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x10 });
+            byte[] message = Encoding.ASCII.GetBytes("0123456789ABCDEF");
+            ProtectedMemory protectedMessage = ProtectedMemory.Allocate(message.Length);
+            protectedMessage.Write(message, 0);
+            Console.WriteLine("Unencrypted:");
+            Console.WriteLine(Encoding.UTF8.GetString(protectedMessage.Read(0, protectedMessage.ContentLength)));
+            Console.WriteLine("");
+            Console.WriteLine("AES-256 CBC encrypted:");
+            aesState.AesCbcEncryptBuffer(protectedMessage);
+            Console.WriteLine(Encoding.UTF8.GetString(protectedMessage.Read(0, protectedMessage.ContentLength)));
+            Console.WriteLine("");
+            aesState = new AesState(aesKey, new byte[] { 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x10 });
+            aesState.AesCbcDecryptBuffer(protectedMessage);
+            Console.WriteLine("AES-256 CBC decrypted:");
+            Console.WriteLine(Encoding.UTF8.GetString(protectedMessage.Read(0, protectedMessage.ContentLength)));
+        }
+
+        private static void Sha256HmacPerfTest()
+        {
+            byte[] key = Encoding.UTF8.GetBytes("ABCD");
+            byte[] message = Encoding.UTF8.GetBytes("ABCD");
+            using ProtectedMemory protectedKey = ProtectedMemory.Allocate(key.Length);
+            using ProtectedMemory protectedMessage = ProtectedMemory.Allocate(message.Length);
+            protectedKey.Write(key, 0);
+            protectedMessage.Write(message, 0);
+            Sha256ProtectedCryptoProvider sha256 = new Sha256ProtectedCryptoProvider();
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            for (int i = 0; i < 250000; i++)
+            {
+                _ = sha256.ComputeHmac(protectedKey, protectedMessage);
+            }
+            stopwatch.Stop();
+            Console.WriteLine("250000 HMACs done in " + stopwatch.Elapsed.ToString());
+            double t = stopwatch.ElapsedMilliseconds / 250000d;
+            Console.WriteLine(" * " + t.ToString() + " ms per HMAC.");
+            Console.WriteLine(" * " + (1000d / t).ToString() + " HMACs per second.");
         }
 
         private static void ScryptPerfTest()

@@ -20,6 +20,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="MemoryProtection\Cryptography\Aes256Protected\AesState.cs~RF5d60f5.TMP" />
     <None Remove="MemoryProtection\Cryptography\ProtectedAesProvider.cs~RF17410b9.TMP" />
     <None Remove="MemoryProtection\Cryptography\ScryptProtected\ScryptHashFunction.cs~RF1571a3a.TMP" />
     <None Remove="MemoryProtection\Cryptography\ScryptProtected\ScryptHashFunction.cs~RF2152ea8.TMP" />

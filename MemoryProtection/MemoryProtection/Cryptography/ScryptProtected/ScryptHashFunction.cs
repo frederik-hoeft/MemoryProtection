@@ -1,11 +1,7 @@
 ﻿using MemoryProtection.MemoryProtection.Cryptography.Sha256Protected;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Net.Mail;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace MemoryProtection.MemoryProtection.Cryptography.ScryptProtected
 {
