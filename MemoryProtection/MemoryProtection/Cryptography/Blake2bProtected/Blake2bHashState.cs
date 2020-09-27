@@ -9,11 +9,11 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected
     internal unsafe partial struct Blake2bHashState
     {
 		internal const int WordSize = sizeof(ulong);
-		internal const int BlockWords = 16;
-		internal const int BlockBytes = BlockWords * WordSize;
+		internal const int BlockWordLength = 16;
+		internal const int BlockSize = BlockWordLength * WordSize;
 		internal const int HashWords = 8;
-		internal const int HashBytes = HashWords * WordSize;
-		internal const int MaxKeyBytes = HashBytes;
+		internal const int HashSize = HashWords * WordSize;
+		internal const int MaxKeyBytes = HashSize;
 
 		private IntPtr hHash;
 		private IntPtr hBlock;
@@ -36,30 +36,44 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected
 			0x79, 0x21, 0x7E, 0x13, 0x19, 0xCD, 0xE0, 0x5B
 		};
 
-		internal void Init(int digestLength)
+		internal void Init(int digestLength, ProtectedMemory key)
 		{
-			hHash = Marshal.AllocHGlobal(HashBytes);
+			uint keyLength = key == null ? 0u : (uint)(key?.ContentLength);
+			hHash = Marshal.AllocHGlobal(HashSize);
 			hash = (ulong*)hHash;
 
-			hBlock = Marshal.AllocHGlobal(BlockBytes);
+			hBlock = Marshal.AllocHGlobal(BlockSize);
 			block = (byte*)hBlock;
 
-			if (digestLength == 0 || (uint)digestLength > HashBytes)
+			if (digestLength == 0 || (uint)digestLength > HashSize)
             {
-                throw new ArgumentOutOfRangeException(nameof(digestLength), "Value must be between 1 and " + HashBytes);
+                throw new ArgumentOutOfRangeException(nameof(digestLength), "Value must be between 1 and " + HashSize);
             }
+			if (keyLength > MaxKeyBytes)
+            {
+                throw new ArgumentException("Key must be between 0 and " + MaxKeyBytes + " bytes in length", nameof(key));
+			}
 
-            outlen = (uint)digestLength;
+			outlen = (uint)digestLength;
 			fixed (byte* pIv = iv)
             {
-				Unsafe.CopyBlock(hash, pIv, HashBytes);
+				Unsafe.CopyBlock(hash, pIv, HashSize);
 			}
-			hash[0] ^= 0x01010000u ^ 0u ^ outlen;
+			hash[0] ^= 0x01010000u ^ (keyLength << 8) ^ outlen;
+
+			if (keyLength != 0)
+			{
+                using (ProtectedMemoryAccess access = new ProtectedMemoryAccess(key))
+                {
+					Unsafe.CopyBlockUnaligned(block, (byte*)access.Handle, keyLength);
+                }
+				c = BlockSize;
+			}
 		}
 
 		private void Compress(byte* input, uint offs, uint cb)
 		{
-			uint inc = Math.Min(cb, BlockBytes);
+			uint inc = Math.Min(cb, BlockSize);
 			fixed (Blake2bHashState* s = &this)
 			{
 				ulong* sh = s->hash;
@@ -96,7 +110,7 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected
             uint consumed = 0;
 			uint remaining = (uint)length;
 
-			uint blockrem = BlockBytes - c;
+			uint blockrem = BlockSize - c;
 			if ((c != 0) && (remaining > blockrem))
 			{
 				if (blockrem != 0)
@@ -105,14 +119,14 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected
                 }
 
                 c = 0;
-				Compress(block, 0, BlockBytes);
+				Compress(block, 0, BlockSize);
 				consumed += blockrem;
 				remaining -= blockrem;
 			}
 
-			if (remaining > BlockBytes)
+			if (remaining > BlockSize)
 			{
-				uint cb = (remaining - 1) & ~((uint)BlockBytes - 1);
+				uint cb = (remaining - 1) & ~((uint)BlockSize - 1);
 				Compress(input, consumed, cb);
 				consumed += cb;
 				remaining -= cb;
@@ -135,9 +149,9 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected
             {
                 throw new InvalidOperationException("Hash has already been finalized.");
             }
-            if (c < BlockBytes)
+            if (c < BlockSize)
             {
-                Unsafe.InitBlockUnaligned(block + c, 0, BlockBytes - c);
+                Unsafe.InitBlockUnaligned(block + c, 0, BlockSize - c);
             }
             f[0] = ~0ul;
 			Compress(block, 0, c);
@@ -149,8 +163,8 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected
 
 		internal void Free()
         {
-			MarshalExtensions.ZeroMemory(hHash, HashBytes);
-			MarshalExtensions.ZeroMemory(hBlock, BlockBytes);
+			MarshalExtensions.ZeroMemory(hHash, HashSize);
+			MarshalExtensions.ZeroMemory(hBlock, BlockSize);
 			Marshal.FreeHGlobal(hHash);
 			Marshal.FreeHGlobal(hBlock);
 		}

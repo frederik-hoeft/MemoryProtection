@@ -5,11 +5,8 @@ using System.Text;
 
 namespace MemoryProtection.MemoryProtection.Cryptography
 {
-    public abstract class ProtectedHashFunction : IProtectedHashFunction
+    public abstract class ProtectedHashFunction : IProtectedHashFunction, ICryptoServiceOwner
     {
-        private static RNGCryptoServiceProvider rngCryptoService;
-        private protected RNGCryptoServiceProvider RngCryptoService => rngCryptoService ??= new RNGCryptoServiceProvider();
-
         public abstract string ComputeHash(ProtectedMemory protectedMemory);
 
         public abstract string ComputeHash(IProtectedString protectedString);
@@ -35,7 +32,7 @@ namespace MemoryProtection.MemoryProtection.Cryptography
         private protected byte[] GetRandomBytes(int size)
         {
             byte[] bytes = new byte[size];
-            RngCryptoService.GetBytes(bytes);
+            ICryptoServiceOwner.RngCryptoService.GetBytes(bytes);
             return bytes;
         }
 

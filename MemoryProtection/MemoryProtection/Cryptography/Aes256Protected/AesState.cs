@@ -8,6 +8,7 @@ using System.Text.Json;
 
 namespace MemoryProtection.MemoryProtection.Cryptography.Aes256Protected
 {
+    // https://github.com/kokke/tiny-AES-c/blob/master/aes.c
     internal class AesState
     {
         private static readonly byte[] SBox = new byte[] {
@@ -47,7 +48,7 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Aes256Protected
             0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
             0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d };
 
-        // The round constant word array, Rcon[i], contains the values given by
+        // The round constant word array, RoundConstants[i], contains the values given by
         // x to the power (i-1) being powers of x (x is denoted as {02}) in the field GF(2^8)
         private static readonly byte[] RoundConstants = new byte[] {
             0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36 };
@@ -102,6 +103,7 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Aes256Protected
                 }
                 roundKey[i] = roundKey[i - Nk] ^ buffer[0];
             }
+            Marshal.FreeHGlobal(hBuffer);
         }
 
         internal unsafe void AesCbcDecryptBuffer(ProtectedMemory protectedBuffer)
@@ -113,7 +115,7 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Aes256Protected
             byte* buffer = (byte*)access.Handle;
             byte* roundKey = (byte*)roundKeyAccess.Handle;
             State state = new State(buffer);
-            fixed (byte* originalIv = this.iv)
+            fixed (byte* originalIv = iv)
             {
                 byte* iv = originalIv;
                 for (int i = 0; i < protectedBuffer.ContentLength; i += AesBlockLength)
