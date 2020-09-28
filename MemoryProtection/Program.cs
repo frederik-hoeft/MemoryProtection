@@ -18,7 +18,24 @@ namespace MemoryProtection
         private static void Main(string[] args)
         {
             // Call whatever test method you want.
-            AesTests();
+            AesTests2();
+        }
+
+        private static void AesTests2()
+        {
+            byte[] key = Encoding.UTF8.GetBytes("ABCD");
+            using ProtectedMemory protectedKey = ProtectedMemory.Allocate(key.Length);
+            protectedKey.Write(key, 0);
+            ProtectedAesProvider aes = new ProtectedAesProvider();
+            const string secret = "ABCDDCBA";
+            Console.WriteLine("Original message:");
+            Console.WriteLine(secret + "\n");
+            string encrypted = aes.Encrypt(protectedKey, secret);
+            Console.WriteLine("Encrypted message:");
+            Console.WriteLine(encrypted + "\n");
+            string decrypted = aes.Decrypt(protectedKey, encrypted);
+            Console.WriteLine("Decrypted message:");
+            Console.WriteLine(decrypted + "\n");
         }
 
         private static void AesTests()
@@ -26,13 +43,20 @@ namespace MemoryProtection
             byte[] key = Encoding.UTF8.GetBytes("ABCD");
             using ProtectedMemory protectedKey = ProtectedMemory.Allocate(key.Length);
             protectedKey.Write(key, 0);
-            Sha256ProtectedCryptoProvider sha256 = new Sha256ProtectedCryptoProvider();
-            ProtectedMemory aesKey = sha256.ComputeHashProtected(protectedKey);
             ProtectedAesProvider aes = new ProtectedAesProvider();
-            byte[] message = Encoding.ASCII.GetBytes("0123456789ABCDEF");
-            ProtectedMemory protectedMessage = ProtectedMemory.Allocate(message.Length);
+            const string secret = "0123456789ABCDEF";
+            Console.WriteLine("Original message:");
+            Console.WriteLine(secret + "\n");
+            byte[] message = Encoding.UTF8.GetBytes(secret);
+            using ProtectedMemory protectedMessage = ProtectedMemory.Allocate(message.Length);
             protectedMessage.Write(message, 0);
-            Console.WriteLine(aes.Encrypt(aesKey, protectedMessage));
+            string encrypted = aes.EncryptProtected(protectedKey, protectedMessage);
+            Console.WriteLine("Encrypted message:");
+            Console.WriteLine(encrypted + "\n");
+            using ProtectedMemory protectedResult = aes.DecryptProtected(protectedKey, encrypted);
+            byte[] result = protectedResult.Read(0, message.Length);
+            Console.WriteLine("Decrypted message:");
+            Console.WriteLine(Encoding.UTF8.GetString(result) + "\n");
         }
 
         private static void Sha256HmacPerfTest()
@@ -374,6 +398,15 @@ namespace MemoryProtection
             for (int i = 0; i < size / sizeof(int); i++)
             {
                 Console.Write(Marshal.ReadInt32(ptr + i * sizeof(int)).ToString() + " ");
+            }
+            Console.WriteLine("");
+        }
+
+        internal static unsafe void PrintUInt64Array(ulong* ptr, int size)
+        {
+            for (int i = 0; i < size; i++)
+            {
+                Console.Write(ptr[i].ToString() + " ");
             }
             Console.WriteLine("");
         }

@@ -63,6 +63,7 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Blake2bProtected
 
 			if (keyLength != 0)
 			{
+				MarshalExtensions.ZeroMemory(hBlock, BlockSize);
                 using (ProtectedMemoryAccess access = new ProtectedMemoryAccess(key))
                 {
 					Unsafe.CopyBlockUnaligned(block, (byte*)access.Handle, keyLength);

@@ -37,17 +37,22 @@ namespace MemoryProtection.MemoryProtection
 
         public virtual void Write(byte[] bytes, int offset)
         {
+            Write(bytes, offset, bytes.Length);
+        }
+
+        public virtual void Write(byte[] bytes, int offset, int length)
+        {
+            if (IsOutOfBoundes(offset + length))
+            {
+                throw new IndexOutOfRangeException("Buffer overflow!");
+            }
             try
             {
                 Unprotect();
-                if (IsOutOfBoundes(offset + bytes.Length))
+                Marshal.Copy(bytes, 0, directHandle + offset, length);
+                if (offset + length > ContentLength)
                 {
-                    throw new IndexOutOfRangeException("Buffer overflow!");
-                }
-                Marshal.Copy(bytes, 0, directHandle + offset, bytes.Length);
-                if (offset + bytes.Length > ContentLength)
-                {
-                    ContentLength = offset + bytes.Length;
+                    ContentLength = offset + length;
                 }
             }
             finally
@@ -60,7 +65,7 @@ namespace MemoryProtection.MemoryProtection
 
         public virtual void CopyTo(int startIndex, ProtectedMemory destination, int destinationOffset, int length)
         {
-            if (ContentLength - startIndex > destination.ContentLength - destinationOffset)
+            if (length - startIndex > destination.ContentLength - destinationOffset)
             {
                 throw new ArgumentException("Destination cannot be smaller than source!");
             }

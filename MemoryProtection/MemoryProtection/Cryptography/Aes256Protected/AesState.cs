@@ -68,7 +68,8 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Aes256Protected
         internal AesState(ProtectedMemory key, byte[] iv)
         {
             protectedRoundKey = ProtectedMemory.Allocate(KeyExpSize);
-            this.iv = iv;
+            this.iv = new byte[16];
+            Buffer.BlockCopy(iv, 0, this.iv, 0, 16);
             KeyExpansion(key);
         }
 
@@ -125,6 +126,31 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Aes256Protected
                     XorWithIv(state.Buffer, iv);
                     Unsafe.CopyBlock(iv, ivBuffer, AesBlockLength);
                     state.Buffer += AesBlockLength;
+                }
+            }
+            Marshal.FreeHGlobal(hIvBuffer);
+        }
+
+        internal unsafe void AesCbcDecryptBuffer(ref byte[] buffer)
+        {
+            IntPtr hIvBuffer = Marshal.AllocHGlobal(AesBlockLength);
+            byte* ivBuffer = (byte*)hIvBuffer;
+            using ProtectedMemoryAccess roundKeyAccess = new ProtectedMemoryAccess(protectedRoundKey);
+            fixed (byte* pBuffer = buffer)
+            {
+                byte* roundKey = (byte*)roundKeyAccess.Handle;
+                State state = new State(pBuffer);
+                fixed (byte* originalIv = iv)
+                {
+                    byte* iv = originalIv;
+                    for (int i = 0; i < buffer.Length; i += AesBlockLength)
+                    {
+                        Unsafe.CopyBlock(ivBuffer, state.Buffer, AesBlockLength);
+                        InverseCipher(state, roundKey);
+                        XorWithIv(state.Buffer, iv);
+                        Unsafe.CopyBlock(iv, ivBuffer, AesBlockLength);
+                        state.Buffer += AesBlockLength;
+                    }
                 }
             }
             Marshal.FreeHGlobal(hIvBuffer);
@@ -238,6 +264,28 @@ namespace MemoryProtection.MemoryProtection.Cryptography.Aes256Protected
                     state.Buffer += AesBlockLength;
                 }
                 Marshal.Copy(new IntPtr(iv), this.iv, 0, this.iv.Length);
+            }
+        }
+
+        internal unsafe void AesCbcEncryptBuffer(ref byte[] buffer)
+        {
+            fixed (byte* originalIv = iv)
+            {
+                byte* iv = originalIv;
+                using ProtectedMemoryAccess roundKeyAccess = new ProtectedMemoryAccess(protectedRoundKey);
+                fixed (byte* pBuffer = buffer)
+                {
+                    byte* roundKey = (byte*)roundKeyAccess.Handle;
+                    State state = new State(pBuffer);
+                    for (int i = 0; i < buffer.Length; i += AesBlockLength)
+                    {
+                        XorWithIv(state.Buffer, iv);
+                        Cipher(state, roundKey);
+                        iv = state.Buffer;
+                        state.Buffer += AesBlockLength;
+                    }
+                    Marshal.Copy(new IntPtr(iv), this.iv, 0, this.iv.Length);
+                }
             }
         }
 
