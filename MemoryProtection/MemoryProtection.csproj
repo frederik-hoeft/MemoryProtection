@@ -29,6 +29,7 @@
     <None Remove="MemoryProtection\Cryptography\ScryptProtected\ScryptHashFunction.cs~RF2b6de89.TMP" />
     <None Remove="MemoryProtection\Cryptography\ScryptProtected\ScryptHashFunction.cs~RF82207d.TMP" />
     <None Remove="MemoryProtection\Cryptography\Sha256ProtectedCryptoProvider.cs~RF1760f62.TMP" />
+    <None Remove="MemoryProtection\Posix\PosixFrobnicatedMemory.cs~RF139a5b6.TMP" />
     <None Remove="MemoryProtection\ProtectedMemory.cs~RFf28d07.TMP" />
     <None Remove="MemoryProtection\ProtectedMemoryAccessProvider.cs~RFd745ab.TMP" />
     <None Remove="MemoryProtection\ProtectedString.cs~RF2622892.TMP" />

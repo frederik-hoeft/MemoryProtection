@@ -1,4 +1,5 @@
 ﻿using MemoryProtection.MemoryProtection.Linux;
+using MemoryProtection.MemoryProtection.Posix;
 using MemoryProtection.MemoryProtection.Win32;
 using System;
 using System.Collections.Generic;
@@ -132,11 +133,11 @@ namespace MemoryProtection.MemoryProtection
                 // return new Win32ProtectedMemory(size);
                 return new Win32EncryptedMemory(size);
             }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD))
+            else
             {
+                // return new PosixFrobnicatedMemory(size);
                 return new PosixProtectedMemory(size);
             }
-            throw new NotImplementedException("This platform is currently not supported!");
         }
 
         public override bool Equals(object obj)

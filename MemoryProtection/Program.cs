@@ -18,7 +18,7 @@ namespace MemoryProtection
         private static void Main(string[] args)
         {
             // Call whatever test method you want.
-            AesTests2();
+            TestProtectedMemory2();
         }
 
         private static void AesTests2()

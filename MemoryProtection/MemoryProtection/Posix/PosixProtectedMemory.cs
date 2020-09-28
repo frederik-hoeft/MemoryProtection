@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -38,25 +39,20 @@ namespace MemoryProtection.MemoryProtection.Linux
                 size = 1;
             }
             uint pageSize = (uint)getpagesize();
-            Console.WriteLine("getpagesize returned " + pageSize.ToString());
             if (pageSize == 0x0)
             {
-                Console.WriteLine("That's invalid. Bye!");
-                Environment.Exit(-1337);
+                Debug.WriteLine("getpagesize() returned 0! Defaulting to 4096 Bytes ...");
+                pageSize = 4096;
             }
             uint requiredPages = (uint)Math.Ceiling((double)size / pageSize);
             allocatedSize = requiredPages * pageSize;
             Size = (int)allocatedSize;
             void* memptr = null;
-            int ret = posix_memalign(&memptr, pageSize, allocatedSize);
-            Console.WriteLine("posix_memalign returned 0x" + ret.ToString("x"));
-            Console.WriteLine("memptr is 0x" + ((ulong)memptr).ToString("x"));
+            _ = posix_memalign(&memptr, pageSize, allocatedSize);
             directHandle = (IntPtr)memptr;
             MarshalExtensions.ZeroMemory(directHandle, Size);
-            Console.WriteLine("Zeroed memory!");
             ContentLength = size;
-            ret = mprotect(directHandle, allocatedSize, (int)PROT_FLAGS.PROT_NONE);
-            Console.WriteLine("mprotect returned 0x" + ret.ToString("x"));
+            _ = mprotect(directHandle, allocatedSize, (int)PROT_FLAGS.PROT_NONE);
         }
 
         public override void Free()
