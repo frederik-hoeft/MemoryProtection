@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace pmdbs2X.Security.MemoryProtection.Posix
+namespace pmdbs2X.Security.MemoryProtection.CrossPlatform.Posix
 {
     public class PosixProtectedMemory : ProtectedMemory
     {

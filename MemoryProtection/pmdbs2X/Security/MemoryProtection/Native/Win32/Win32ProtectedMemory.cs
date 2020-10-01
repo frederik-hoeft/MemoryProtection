@@ -6,7 +6,7 @@ using System.Security;
 using System.Security.Permissions;
 using System.Text;
 
-namespace pmdbs2X.Security.MemoryProtection.Win32
+namespace pmdbs2X.Security.MemoryProtection.CrossPlatform.Win32
 {
     public class Win32ProtectedMemory : ProtectedMemory
     {

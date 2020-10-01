@@ -12,6 +12,12 @@ namespace pmdbs2X.Security.MemoryProtection
 
         public bool Equals(IProtectedString other);
 
+        public abstract char this[int index]
+        {
+            get;
+            set;
+        }
+
         public ProtectedMemory GetProtectedUtf8Bytes();
     }
 }

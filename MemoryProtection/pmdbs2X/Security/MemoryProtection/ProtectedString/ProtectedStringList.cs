@@ -12,6 +12,13 @@ namespace pmdbs2X.Security.MemoryProtection.ProtectedString
     {
         private int rawContentLength;
         public int Length { get; private set; }
+
+        public char this[int index]
+        {
+            get => Get(index);
+            set => throw new NotImplementedException();
+        }
+
         private ProtectedStringNode head;
         private ProtectedStringNode tail;
 
@@ -37,6 +44,33 @@ namespace pmdbs2X.Security.MemoryProtection.ProtectedString
                 tail = node;
             }
             Length++;
+        }
+
+        private char Get(int index)
+        {
+            if (index < 0 || index > Length)
+            {
+                throw new IndexOutOfRangeException("Index " + index + " was out of range for " + nameof(Length) + "=" + Length);
+            }
+            if (index < Length / 2)
+            {
+                ProtectedStringNode node = head;
+                for (int i = 0; i < index && node != null; i++)
+                {
+                    node = node.Next;
+                }
+
+                if (node == null)
+                {
+                    throw new NullReferenceException("Encountered unexpected null reference: " + nameof(node) + " was null!");
+                }
+                return node.Value;
+            }
+            else
+            {
+                // TODO: iterate from Length backwards down to Length / 2!
+            }
+            return default;
         }
 
         public override bool Equals(object obj)

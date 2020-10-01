@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace pmdbs2X.Security.MemoryProtection.Win32
+namespace pmdbs2X.Security.MemoryProtection.CrossPlatform.Win32
 {
     public class Win32EncryptedMemory : ProtectedMemory
     {
