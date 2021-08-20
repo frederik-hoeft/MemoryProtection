@@ -10,6 +10,5 @@ A collection of anti debug methods and crypto algorithms using protected memory 
 - [x] Blake2b implementation using protected memory, zero-freeing used buffers.
 - [x] Scrypt implementation using protected memory, zero-freeing used buffers.
 - [x] AES-256 CBC implementation using protected memory, zero-freeing used buffers.
-- [ ] DEPRECATED / REPLACE WITH `pmdbs2XNative`!!!
 
 ###### For now take a look at Program.cs for examples and usage :)
