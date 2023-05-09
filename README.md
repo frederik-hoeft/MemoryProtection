@@ -1,4 +1,11 @@
 # MemoryProtection
+
+| :exclamation:  Discontinuation notice   |
+|-----------------------------------------|
+This implementation is no longer under active development and has been succeeded by the [PrySec project](https://github.com/PrySec/PrySec), which serves as its spiritual successor.
+
+---
+
 A collection of anti debug methods and crypto algorithms using protected memory only. Intended for dealing with passwords and confidential data.
 
 #### TODO: 
